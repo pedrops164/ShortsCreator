@@ -2,8 +2,6 @@ package com.shortscreator.shared.validation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
 import org.springframework.util.StreamUtils; // A better way to get string from resource
 
 import java.io.IOException;
@@ -17,7 +15,6 @@ import com.github.fge.jsonschema.core.report.ProcessingReport;
 
 public class TemplateValidator {
 
-    private final ResourceLoader resourceLoader;
     private final ObjectMapper objectMapper;
     private final Map<String, JsonSchema> schemaCache = new ConcurrentHashMap<>();
     private final JsonSchemaFactory schemaFactory = JsonSchemaFactory.byDefault();
@@ -26,8 +23,7 @@ public class TemplateValidator {
      * The constructor takes the dependencies it needs. It doesn't know or care
      * that they will be provided by a Spring application.
      */
-    public TemplateValidator(ResourceLoader resourceLoader, ObjectMapper objectMapper) {
-        this.resourceLoader = resourceLoader;
+    public TemplateValidator(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
@@ -65,7 +61,7 @@ public class TemplateValidator {
             JsonNode schemaNode = objectMapper.readTree(schemaString);
             return schemaFactory.getJsonSchema(schemaNode);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to load or parse schema: " + schemaFileName, e);
+            throw new RuntimeException("Failed to load or parse schema " + schemaFileName + ", reason: " + e.getMessage(), e);
         }
     }
     

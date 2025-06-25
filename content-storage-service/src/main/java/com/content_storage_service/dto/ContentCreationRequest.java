@@ -12,9 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ContentCreationRequest {
-    // Checking validity of userId, templateId, contentType and templateParams are done in the service layer
-    @NotNull(message = "User ID cannot be null")
-    private String userId; // Will be replaced by Principal.getName() in real auth
+    // Checking validity of templateId, contentType and templateParams are done in the service layer
     @NotNull(message = "Template ID cannot be null")
     private String templateId;
     @NotNull(message = "Content Type cannot be null")

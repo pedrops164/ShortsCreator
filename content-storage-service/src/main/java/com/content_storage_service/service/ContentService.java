@@ -16,7 +16,6 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,17 +40,16 @@ public class ContentService {
      * @return A Mono emitting the created Content object.
      */
     public Mono<Content> createDraft(String userId, String templateId, ContentType contentType, JsonNode templateParams) {
+        log.info("Attempting to create a new draft for user [{}] with template [{}]", userId, templateId);
         try {
-            // The validator will now throw an exception on failure.
+            log.debug("Validating initial draft parameters for template [{}]", templateId);
             templateValidator.validate(templateId, templateParams, false);
         } catch (ValidationException e) {
+            log.warn("Initial draft validation failed for user [{}]: {}", userId, e.getMessage());
             return Mono.error(new IllegalArgumentException("Initial draft parameters are invalid: " + e.getMessage()));
         }
-        // Generate a new UUID for the content ID
-        String newContentId = UUID.randomUUID().toString();
 
         Content newContent = Content.builder()
-                .id(newContentId)
                 .userId(userId)
                 .templateId(templateId)
                 .contentType(contentType)
@@ -59,7 +57,8 @@ public class ContentService {
                 .templateParams(templateParams)
                 .build();
 
-        return contentRepository.save(newContent);
+        return contentRepository.save(newContent)
+                .doOnSuccess(savedContent -> log.info("Successfully created draft with ID [{}] for user [{}]", savedContent.getId(), userId));
     }
 
     /**
@@ -70,18 +69,24 @@ public class ContentService {
      * @return A Mono emitting the updated Content object, or an error if not found or unauthorized.
      */
     public Mono<Content> updateDraft(String contentId, String userId, JsonNode updatedTemplateParams) {
+        log.info("User [{}] is attempting to update draft [{}]", userId, contentId);
         return contentRepository.findByIdAndUserId(contentId, userId)
                 .flatMap(existingContent -> {
+                    log.debug("Found draft [{}] for update. Current status: {}", contentId, existingContent.getStatus());
                     if (existingContent.getStatus() != ContentStatus.DRAFT) {
+                        log.warn("User [{}] attempted to update content [{}] which is not a DRAFT (status: {})", userId, contentId, existingContent.getStatus());
                         return Mono.error(new IllegalStateException("Cannot update a content item that is not a DRAFT. Current status: " + existingContent.getStatus()));
                     }
 
                     // Perform JSON Schema validation on the updatedTemplateParams
                     try {
+                        log.debug("Validating updated draft parameters for content [{}]", contentId);
                         templateValidator.validate(existingContent.getTemplateId(), updatedTemplateParams, false);
                         existingContent.setTemplateParams(updatedTemplateParams);
-                        return contentRepository.save(existingContent);
+                        return contentRepository.save(existingContent)
+                                .doOnSuccess(saved -> log.info("Successfully updated draft [{}]", saved.getId()));
                     } catch (ValidationException e) {
+                        log.warn("Updated draft validation failed for content [{}]: {}", contentId, e.getMessage());
                         return Mono.error(new IllegalArgumentException("Updated draft parameters are invalid: " + e.getMessage()));
                     }
                 })
@@ -94,6 +99,7 @@ public class ContentService {
      * @return A Flux emitting Content objects with DRAFT status.
      */
     public Flux<Content> getUserDrafts(String userId) {
+        log.info("Fetching all drafts for user [{}]", userId);
         return contentRepository.findByUserIdAndStatus(userId, ContentStatus.DRAFT);
     }
 
@@ -104,7 +110,15 @@ public class ContentService {
      * @return A Mono emitting the Content object, or empty if not found or unauthorized.
      */
     public Mono<Content> getContentByIdAndUserId(String contentId, String userId) {
-        return contentRepository.findByIdAndUserId(contentId, userId);
+        log.info("Fetching content [{}] for user [{}]", contentId, userId);
+        return contentRepository.findByIdAndUserId(contentId, userId)
+                .doOnSuccess(content -> {
+                    if (content != null) {
+                        log.debug("Found content [{}] for user [{}]", contentId, userId);
+                    } else {
+                        log.debug("No content found with ID [{}] for user [{}]", contentId, userId);
+                    }
+                });
     }
 
     /**
@@ -115,23 +129,27 @@ public class ContentService {
      * @return A Mono emitting the updated Content object.
      */
     public Mono<Content> submitForGeneration(String contentId, String userId) {
+        log.info("User [{}] attempting to submit content [{}] for generation", userId, contentId);
         return contentRepository.findByIdAndUserId(contentId, userId)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Draft not found")))
                 .flatMap(content -> {
                     if (content.getStatus() != ContentStatus.DRAFT) {
+                        log.warn("Submission failed: Content [{}] for user [{}] is not a DRAFT (status: {})", contentId, userId, content.getStatus());
                         return Mono.error(new IllegalStateException("Only DRAFTs can be submitted for generation. Current status: " + content.getStatus()));
                     }
 
                     try {
-                        // Use the validator for final validation
+                        log.debug("Performing final validation for content [{}]", contentId);
                         templateValidator.validate(content.getTemplateId(), content.getTemplateParams(), true);
                     } catch (ValidationException e) {
+                        log.error("Final validation failed for content [{}]. Setting status to FAILED. Reason: {}", contentId, e.getMessage());
                         content.setStatus(ContentStatus.FAILED);
                         content.setErrorMessage("Final validation failed: " + e.getMessage());
                         return contentRepository.save(content)
                             .then(Mono.error(new IllegalArgumentException("Draft is not valid for generation.")));
                     }
                     content.setStatus(ContentStatus.PROCESSING);
+                    log.info("Content [{}] passed final validation. Setting status to PROCESSING.", contentId);
                     // Save the content with updated status, and send a message to the Content Generation Service
                     return contentRepository.save(content)
                             .doOnSuccess(processingContent -> {
@@ -146,14 +164,16 @@ public class ContentService {
                                 // 4. Construct routing key and send message
                                 String routingKey = appProperties.getRabbitmq().getRoutingKeys().getGenerationRequestPrefix() + processingContent.getTemplateId(); // e.g., "request.generate.reddit_story_v1"
                                 String exchangeName = appProperties.getRabbitmq().getExchange(); // e.g., "content_generation_exchange"
+                                log.debug("Preparing to send generation request for content [{}]. Routing Key: {}", processingContent.getId(), routingKey);
                                 rabbitTemplate.convertAndSend(exchangeName, routingKey, request);
-                                log.info("Sent generation request for contentId: {} with routingKey: {}", processingContent.getId(), routingKey);
+                                log.info("Sent generation request for contentId [{}] with routingKey: {}", processingContent.getId(), routingKey);
                             });
                 })
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Content not found or unauthorized for ID: " + contentId)));
     }
 
     public Mono<Content> processStatusUpdate(StatusUpdateV1 update) {
+        log.info("Processing status update for content [{}]. New status: {}", update.getContentId(), update.getStatus());
         return contentRepository.findById(update.getContentId())
             .switchIfEmpty(Mono.error(new IllegalArgumentException("Content not found for status update")))
             .flatMap(content -> {
@@ -167,15 +187,18 @@ public class ContentService {
 
                 content.setStatus(newStatus);
                 if (newStatus == ContentStatus.COMPLETED) {
-                    // Convert JsonNode to your OutputAssets POJO
+                    log.info("Content [{}] has been successfully COMPLETED.", content.getId());
                     OutputAssetsV1 assets = update.getOutputAssets();
                     content.setOutputAssets(assets);
                     content.setErrorMessage(null);
                 } else if (newStatus == ContentStatus.FAILED) {
+                    log.error("Content [{}] has FAILED processing. Reason: {}", content.getId(), update.getErrorMessage());
                     content.setErrorMessage(update.getErrorMessage());
                 }
+                
+                return contentRepository.save(content)
+                .doOnSuccess(saved -> log.info("Successfully updated status for content [{}] to {}", saved.getId(), saved.getStatus()));
 
-                return contentRepository.save(content);
             });
     }
 }

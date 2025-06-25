@@ -1,0 +1,26 @@
+# Settings for the 'prod' profile.
+
+# Disable detailed error messages for security
+server:
+  error:
+    include-message: never
+    include-binding-errors: never
+
+# Connection details for production services
+spring:
+  data:
+    mongodb:
+      # In production, get the full URI from an environment variable for security
+      uri: ${MONGO_PROD_URI}
+  rabbitmq:
+    host: prod-rabbitmq.internal
+    port: 5672
+    # Get credentials from environment variables or a secrets manager
+    username: ${RABBITMQ_PROD_USER}
+    password: ${RABBITMQ_PROD_PASS}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # The real, public-facing URI of the Keycloak instance
+          issuer-uri: https://auth.yourdomain.com/realms/shorts-creator-realm

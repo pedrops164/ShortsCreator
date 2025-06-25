@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shortscreator.shared.dto.GenerationRequestV1;
 import com.shortscreator.shared.dto.StatusUpdateV1;
 import com.shortscreator.shared.enums.ContentStatus;
-import com.shortscreator.shared.validation.TemplateValidator;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +28,6 @@ import org.springframework.amqp.core.Queue;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 @SpringBootTest
 @Testcontainers

@@ -1,13 +1,11 @@
 package com.content_generation_service.messaging;
 
 import com.content_generation_service.config.AppProperties;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shortscreator.shared.dto.GenerationRequestV1;
 import com.shortscreator.shared.dto.StatusUpdateV1;
 import com.shortscreator.shared.enums.ContentStatus;
 import com.shortscreator.shared.validation.TemplateValidator;
-import com.shortscreator.shared.validation.TemplateValidator.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

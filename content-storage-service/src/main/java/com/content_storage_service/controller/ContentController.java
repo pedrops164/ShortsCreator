@@ -3,6 +3,9 @@ package com.content_storage_service.controller;
 import com.content_storage_service.model.Content;
 import com.content_storage_service.service.ContentService;
 import com.fasterxml.jackson.databind.JsonNode;
+
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -16,29 +19,25 @@ import java.security.Principal; // To get the authenticated user ID (from OAuth2
 
 @RestController
 @RequestMapping("/api/v1/content")
+@RequiredArgsConstructor
 public class ContentController {
 
     private final ContentService contentService;
-
-    public ContentController(ContentService contentService) {
-        this.contentService = contentService;
-    }
 
     // Endpoint for a user to start a new content draft
     @PostMapping("/drafts")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("isAuthenticated()")
     public Mono<Content> createContentDraft(@RequestBody ContentCreationRequest request, Principal principal) {
-        // In a real application, 'principal' would be used to get the actual authenticated user ID.
-        // For now, let's assume request.userId is validated against principal.getName() in a real auth setup.
-        String userId = request.getUserId(); // Or principal.getName() for authenticated user
+        //String userId = request.getUserId(); // Or principal.getName() for authenticated user
+        String userId = principal.getName(); // Get authenticated user ID
         return contentService.createDraft(userId, request.getTemplateId(), request.getContentType(), request.getTemplateParams())
                 .onErrorResume(e -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage())));
     }
 
     // Endpoint for a user to update an existing draft
     @PutMapping("/drafts/{contentId}")
-    @PreAuthorize("@contentSecurity.isOwner(#contentId, principal)") 
+    @PreAuthorize("@contentSecurity.isOwner(#contentId, authentication)") 
     public Mono<Content> updateContentDraft(@PathVariable String contentId, @RequestBody JsonNode updatedTemplateParams, Principal principal) {
         String userId = principal.getName(); // Get authenticated user ID
         return contentService.updateDraft(contentId, userId, updatedTemplateParams)
@@ -59,7 +58,7 @@ public class ContentController {
     // Endpoint to get a specific content item (draft or completed) by ID
     @GetMapping("/{contentId}")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("@contentSecurity.isOwner(#contentId, principal)") 
+    @PreAuthorize("@contentSecurity.isOwner(#contentId, authentication)") 
     public Mono<Content> getContentById(@PathVariable String contentId, Principal principal) {
         String userId = principal.getName(); // Get authenticated user ID
         return contentService.getContentByIdAndUserId(contentId, userId)

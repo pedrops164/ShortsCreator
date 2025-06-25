@@ -21,13 +21,11 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import com.shortscreator.shared.validation.TemplateValidator;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.Queue;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 @SpringBootTest
 @Testcontainers // Activates Testcontainers extension for JUnit 5
@@ -45,15 +43,8 @@ class GenerationRequestListenerIntegrationTest {
         registry.add("spring.rabbitmq.password", rabbitMQContainer::getAdminPassword);
     }
     
-    // Since the validator is now part of the app context, we need to provide a mock for it
-    // during testing, otherwise the application context will fail to start.
     @TestConfiguration
     static class TestConfig {
-        @Bean
-        public TemplateValidator templateValidator() {
-            return mock(TemplateValidator.class);
-        }
-
         // This tells the test's ApplicationContext to use a JSON message converter,
         // overriding the default SimpleMessageConverter.
         @Bean

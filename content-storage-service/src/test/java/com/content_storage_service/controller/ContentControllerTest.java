@@ -26,10 +26,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import java.security.Principal;
 import org.springframework.security.core.Authentication;
 
-@WebFluxTest(ContentController.class) // Load only the Controller layer
+import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
+
+// Exclude the MongoDB auto-configurations for this web-layer-only test
+@WebFluxTest(controllers = ContentController.class)
 class ContentControllerTest {
 
     @Autowired
@@ -56,6 +58,12 @@ class ContentControllerTest {
         public ContentSecurity contentSecurity() {
             return mock(ContentSecurity.class);
         }
+
+        // we are receiving the No bean named 'mongoMappingContext' available error, so we need to add it manually
+        @Bean
+        public MongoMappingContext mongoMappingContext() {
+            return new MongoMappingContext();
+        }
     }
 
     @BeforeEach
@@ -72,7 +80,6 @@ class ContentControllerTest {
     void createContentDraft_whenRequestIsValid_returns201Created() throws Exception {
         // ARRANGE
         ContentCreationRequest request = new ContentCreationRequest();
-        request.setUserId("test-user"); // This should match the mocked user
         request.setTemplateId("reddit_story_v1");
         request.setContentType(ContentType.REDDIT_STORY);
         request.setTemplateParams(objectMapper.createObjectNode().put("title", "A Test Title"));
