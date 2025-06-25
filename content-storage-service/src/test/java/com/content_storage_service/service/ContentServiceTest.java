@@ -3,13 +3,18 @@ package com.content_storage_service.service;
 import com.content_storage_service.config.AppProperties;
 import com.content_storage_service.model.Content;
 import com.content_storage_service.repository.ContentRepository;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shortscreator.shared.dto.GenerationRequestV1;
+import com.shortscreator.shared.dto.OutputAssetsV1;
+import com.shortscreator.shared.dto.StatusUpdateV1;
 import com.shortscreator.shared.enums.ContentStatus;
 import com.shortscreator.shared.enums.ContentType;
 import com.shortscreator.shared.validation.TemplateValidator;
 import com.shortscreator.shared.validation.TemplateValidator.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -55,84 +60,180 @@ class ContentServiceTest {
         sampleDraft.setTemplateParams(objectMapper.createObjectNode().put("title", "A Valid Title"));
     }
 
-    @Test
-    void createDraft_whenParamsAreValid_returnsSavedContent() {
-        // ARRANGE
-        // Mock the validator to succeed (do nothing, as it's a void method)
-        doNothing().when(templateValidator).validate(anyString(), any(), eq(false));
-        // Mock the repository's save method to return the draft we created
-        // This simulates the save operation returning the content with an ID
-        when(contentRepository.save(any(Content.class))).thenReturn(Mono.just(sampleDraft));
+    @Nested
+    @DisplayName("createDraft Tests")
+    class CreateDraftTests {
+        @Test
+        void whenParamsAreValid_returnsSavedContent() {
+            // ARRANGE
+            doNothing().when(templateValidator).validate(anyString(), any(), eq(false));
+            when(contentRepository.save(any(Content.class))).thenReturn(Mono.just(sampleDraft));
 
-        // ACT
-        Mono<Content> resultMono = contentService.createDraft(
-            "user-id-abc", "reddit_story_v1", ContentType.REDDIT_STORY, objectMapper.createObjectNode());
+            // ACT
+            Mono<Content> resultMono = contentService.createDraft(
+                "user-id-abc", "reddit_story_v1", ContentType.REDDIT_STORY, objectMapper.createObjectNode());
 
-        // ASSERT
-        // StepVerifier is the standard way to test reactive streams (Mono/Flux)
-        StepVerifier.create(resultMono)
-            .assertNext(content -> {
-                // FIX 2: Make the assertion stronger and more specific.
-                // Instead of just checking for not-null, check for the expected ID.
-                assertThat(content).isNotNull(); // This will now pass
-                assertThat(content.getId()).isEqualTo(sampleDraft.getId());
-                assertThat(content.getStatus()).isEqualTo(ContentStatus.DRAFT);
-            })
-            .verifyComplete();
+            // ASSERT
+            StepVerifier.create(resultMono)
+                .assertNext(content -> {
+                    assertThat(content).isNotNull();
+                    assertThat(content.getId()).isEqualTo(sampleDraft.getId());
+                    assertThat(content.getStatus()).isEqualTo(ContentStatus.DRAFT);
+                })
+                .verifyComplete();
+        }
+
+        @Test
+        void whenParamsAreInvalid_returnsError() {
+            // ARRANGE
+            doThrow(new ValidationException("Invalid params")).when(templateValidator).validate(anyString(), any(), eq(false));
+
+            // ACT
+            Mono<Content> resultMono = contentService.createDraft("user-id-abc", "reddit_story_v1", ContentType.REDDIT_STORY, null);
+
+            // ASSERT
+            StepVerifier.create(resultMono)
+                .expectErrorMatches(throwable ->
+                    throwable instanceof IllegalArgumentException &&
+                    throwable.getMessage().contains("Initial draft parameters are invalid"))
+                .verify();
+        }
+    }
+    
+    @Nested
+    @DisplayName("updateDraft Tests")
+    class UpdateDraftTests {
+        @Test
+        void whenUpdateIsValid_returnsUpdatedContent() {
+            // ARRANGE
+            JsonNode updatedParams = objectMapper.createObjectNode().put("title", "An Updated Title");
+            doNothing().when(templateValidator).validate(anyString(), any(), eq(false));
+            when(contentRepository.findByIdAndUserId(anyString(), anyString())).thenReturn(Mono.just(sampleDraft));
+            when(contentRepository.save(any(Content.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+            
+            // ACT
+            Mono<Content> resultMono = contentService.updateDraft("content-id-123", "user-id-abc", updatedParams);
+
+            // ASSERT
+            StepVerifier.create(resultMono)
+                .assertNext(content -> assertThat(content.getTemplateParams().get("title").asText()).isEqualTo("An Updated Title"))
+                .verifyComplete();
+        }
+
+        @Test
+        void whenUpdatingNonDraftContent_returnsError() {
+            // ARRANGE
+            sampleDraft.setStatus(ContentStatus.PROCESSING); // Make the content not a draft
+            when(contentRepository.findByIdAndUserId(anyString(), anyString())).thenReturn(Mono.just(sampleDraft));
+
+            // ACT
+            Mono<Content> resultMono = contentService.updateDraft("content-id-123", "user-id-abc", objectMapper.createObjectNode());
+
+            // ASSERT
+            StepVerifier.create(resultMono)
+                .expectError(IllegalStateException.class)
+                .verify();
+        }
     }
 
-    @Test
-    void createDraft_whenParamsAreInvalid_returnsError() {
-        // ARRANGE
-        // Mock the validator to throw our custom exception
-        doThrow(new ValidationException("Invalid params"))
-            .when(templateValidator).validate(anyString(), any(), eq(false));
+    @Nested
+    @DisplayName("submitForGeneration Tests")
+    class SubmitForGenerationTests {
 
-        // ACT
-        Mono<Content> resultMono = contentService.createDraft(
-            "user-id-abc", "reddit_story_v1", ContentType.REDDIT_STORY, null);
+        @Test
+        void whenDraftIsValid_setsStatusToProcessingAndSendsMessage() {
+            // ARRANGE
+            AppProperties.RabbitMQ rabbitMQMock = mock(AppProperties.RabbitMQ.class);
+            AppProperties.RoutingKeys routingKeysMock = mock(AppProperties.RoutingKeys.class);
+            when(appProperties.getRabbitmq()).thenReturn(rabbitMQMock);
+            when(rabbitMQMock.getExchange()).thenReturn("test-exchange");
+            when(rabbitMQMock.getRoutingKeys()).thenReturn(routingKeysMock);
+            when(routingKeysMock.getGenerationRequestPrefix()).thenReturn("test.prefix.");
 
-        // ASSERT
-        StepVerifier.create(resultMono)
-            .expectError(IllegalArgumentException.class) // Expect an error of this type
-            .verify();
+            when(contentRepository.findByIdAndUserId("content-id-123", "user-id-abc")).thenReturn(Mono.just(sampleDraft));
+            doNothing().when(templateValidator).validate(anyString(), any(), eq(true));
+            when(contentRepository.save(any(Content.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+            
+            // ACT
+            Mono<Content> resultMono = contentService.submitForGeneration("content-id-123", "user-id-abc");
+
+            // ASSERT
+            ArgumentCaptor<GenerationRequestV1> messageCaptor = ArgumentCaptor.forClass(GenerationRequestV1.class);
+            StepVerifier.create(resultMono)
+                .assertNext(content -> assertThat(content.getStatus()).isEqualTo(ContentStatus.PROCESSING))
+                .verifyComplete();
+            verify(rabbitTemplate, times(1)).convertAndSend(anyString(), anyString(), messageCaptor.capture());
+            assertThat(messageCaptor.getValue().getContentId()).isEqualTo("content-id-123");
+        }
+
+        @Test
+        void whenFinalValidationFails_setsStatusToFailedAndReturnsError() {
+            // ARRANGE
+            when(contentRepository.findByIdAndUserId(anyString(), anyString())).thenReturn(Mono.just(sampleDraft));
+            doThrow(new ValidationException("Missing required field 'postTitle'")).when(templateValidator).validate(anyString(), any(), eq(true));
+            when(contentRepository.save(any(Content.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+            
+            // ACT
+            Mono<Content> resultMono = contentService.submitForGeneration("content-id-123", "user-id-abc");
+
+            // ASSERT
+            StepVerifier.create(resultMono)
+                .expectError(IllegalArgumentException.class)
+                .verify();
+
+            // Verify that the content was saved with FAILED status BEFORE the error was thrown
+            ArgumentCaptor<Content> contentCaptor = ArgumentCaptor.forClass(Content.class);
+            verify(contentRepository, times(1)).save(contentCaptor.capture());
+            assertThat(contentCaptor.getValue().getStatus()).isEqualTo(ContentStatus.FAILED);
+            assertThat(contentCaptor.getValue().getErrorMessage()).contains("Missing required field 'postTitle'");
+        }
     }
 
-    @Test
-    void submitForGeneration_whenDraftIsValid_setsStatusToProcessingAndSendsMessage() {
-        // ARRANGE
-        when(contentRepository.findByIdAndUserId("content-id-123", "user-id-abc")).thenReturn(Mono.just(sampleDraft));
-        doNothing().when(templateValidator).validate(anyString(), any(), eq(true));
-        // When save is called, return the content that was passed in
-        when(contentRepository.save(any(Content.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+    @Nested
+    @DisplayName("processStatusUpdate Tests")
+    class ProcessStatusUpdateTests {
+        @Test
+        void whenStatusIsCompleted_updatesContentCorrectly() {
+            // ARRANGE
+            OutputAssetsV1 assets = new OutputAssetsV1("http://video.url", 60);
+            StatusUpdateV1 update = new StatusUpdateV1("content-id-123", ContentStatus.COMPLETED, assets, null);
+            
+            when(contentRepository.findById(anyString())).thenReturn(Mono.just(sampleDraft));
+            when(contentRepository.save(any(Content.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
 
-        // Mock AppProperties to return dummy values for messaging
-        AppProperties.RabbitMQ rabbitMQMock = mock(AppProperties.RabbitMQ.class);
-        AppProperties.RoutingKeys routingKeysMock = mock(AppProperties.RoutingKeys.class);
-        when(appProperties.getRabbitmq()).thenReturn(rabbitMQMock);
-        when(rabbitMQMock.getExchange()).thenReturn("test-exchange");
-        when(rabbitMQMock.getRoutingKeys()).thenReturn(routingKeysMock);
-        when(routingKeysMock.getGenerationRequestPrefix()).thenReturn("test.prefix.");
-        
-        // ACT
-        Mono<Content> resultMono = contentService.submitForGeneration("content-id-123", "user-id-abc");
+            // ACT
+            Mono<Content> resultMono = contentService.processStatusUpdate(update);
+            
+            // ASSERT
+            StepVerifier.create(resultMono)
+                .assertNext(content -> {
+                    assertThat(content.getStatus()).isEqualTo(ContentStatus.COMPLETED);
+                    assertThat(content.getOutputAssets().getFinalVideoUrl()).isEqualTo("http://video.url");
+                    assertThat(content.getErrorMessage()).isNull();
+                })
+                .verifyComplete();
+        }
 
-        // ASSERT
-        ArgumentCaptor<GenerationRequestV1> messageCaptor = ArgumentCaptor.forClass(GenerationRequestV1.class);
+        @Test
+        void whenContentIsInTerminalState_ignoresUpdate() {
+            // ARRANGE
+            sampleDraft.setStatus(ContentStatus.COMPLETED); // Set a terminal state
+            StatusUpdateV1 update = new StatusUpdateV1("content-id-123", ContentStatus.FAILED, null, "A new error");
+            when(contentRepository.findById(anyString())).thenReturn(Mono.just(sampleDraft));
 
-        StepVerifier.create(resultMono)
-            .assertNext(content -> {
-                assertThat(content.getStatus()).isEqualTo(ContentStatus.PROCESSING);
-            })
-            .verifyComplete();
-        
-        // Verify that the message was sent to RabbitMQ with the correct details
-        verify(rabbitTemplate, times(1)).convertAndSend(
-            eq("test-exchange"),
-            eq("test.prefix.reddit_story_v1"),
-            messageCaptor.capture());
+            // ACT
+            Mono<Content> resultMono = contentService.processStatusUpdate(update);
 
-        // Assert the content of the message sent
-        assertThat(messageCaptor.getValue().getContentId()).isEqualTo("content-id-123");
+            // ASSERT
+            StepVerifier.create(resultMono)
+                .assertNext(content -> {
+                    // Verify that the status DID NOT change
+                    assertThat(content.getStatus()).isEqualTo(ContentStatus.COMPLETED);
+                })
+                .verifyComplete();
+            
+            // Verify that save was NEVER called
+            verify(contentRepository, never()).save(any(Content.class));
+        }
     }
 }

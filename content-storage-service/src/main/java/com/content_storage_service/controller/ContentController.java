@@ -37,6 +37,7 @@ public class ContentController {
 
     // Endpoint for a user to update an existing draft
     @PutMapping("/drafts/{contentId}")
+    @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("@contentSecurity.isOwner(#contentId, authentication)") 
     public Mono<Content> updateContentDraft(@PathVariable String contentId, @RequestBody JsonNode updatedTemplateParams, Principal principal) {
         String userId = principal.getName(); // Get authenticated user ID
