@@ -42,3 +42,5 @@ build/
 .env
 application.properties
 application.yml
+.env.dev
+.env.prod

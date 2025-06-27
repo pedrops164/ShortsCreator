@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
-import java.time.Duration;
 
 import com.shortscreator.shared.dto.GenerationRequestV1;
 import com.shortscreator.shared.dto.OutputAssetsV1;
@@ -14,6 +13,7 @@ import com.shortscreator.shared.dto.StatusUpdateV1;
 import com.shortscreator.shared.enums.ContentStatus;
 import com.shortscreator.shared.validation.TemplateValidator;
 import com.content_generation_service.config.AppProperties; // Custom properties class
+import com.content_generation_service.generation.orchestrator.RedditStoryOrchestrator;
 
 @Slf4j
 @Service
@@ -23,6 +23,7 @@ public class GenerationRequestListener {
     private final RabbitTemplate rabbitTemplate;
     private final AppProperties appProperties; // Custom properties class
     private final TemplateValidator templateValidator; // Inject validator bean
+    private final RedditStoryOrchestrator redditStoryOrchestrator; // Inject orchestrator bean
 
     // Note: You must configure a MessageConverter bean that uses Jackson for this to work with JsonNode out-of-the-box.
     // Spring Boot's auto-configuration for AMQP usually does this if Jackson is on the classpath.
@@ -37,25 +38,20 @@ public class GenerationRequestListener {
         try {
             // Re-validate the parameters here against the given template.
             templateValidator.validate(request.getTemplateId(), request.getTemplateParams(), true);
-            // Simulate I/O bound work (e.g., calling external APIs, file processing)
-            Thread.sleep(Duration.ofSeconds(1).toMillis());
 
-            // Simulate success
-            boolean isSuccess = true;
+            // Dispatch to the correct orchestrator based on templateId
+            if (RedditStoryOrchestrator.REDDIT_STORY_TEMPLATE_ID.equals(request.getTemplateId())) {
+                
+                // 2. The orchestrator does all the heavy lifting
+                OutputAssetsV1 assets = redditStoryOrchestrator.generate(request.getTemplateParams());
 
-            if (isSuccess) {
-                log.info("Successfully generated content for {}", request.getContentId());
-                // Create dummy output assets
-                String videoUrl = "https://fake-storage.com/videos/" + request.getContentId() + ".mp4";
-                OutputAssetsV1 outputAssets = new OutputAssetsV1(videoUrl, 58);
-                StatusUpdateV1 update = new StatusUpdateV1(request.getContentId(), ContentStatus.COMPLETED, outputAssets, null);
-                String routingKey = statusUpdateRoutingKey + ".completed"; // "update.status.completed"
-                rabbitTemplate.convertAndSend(exchangeName, routingKey, update);
-                log.info("Sent COMPLETED status update for {}", request.getContentId());
+                // 3. If it succeeds, send the COMPLETED message
+                StatusUpdateV1 update = new StatusUpdateV1(request.getContentId(), ContentStatus.COMPLETED, assets, null);
+                rabbitTemplate.convertAndSend(exchangeName, statusUpdateRoutingKey + ".completed", update);
+                log.info("Successfully processed and sent COMPLETED update for {}", request.getContentId());
             } else {
-                throw new RuntimeException("A simulated random error occurred during generation.");
+                throw new UnsupportedOperationException("Template ID not supported: " + request.getTemplateId());
             }
-
         } catch (Exception e) {
             log.error("Failed to generate content for {}: {}", request.getContentId(), e.getMessage());
             StatusUpdateV1 update = new StatusUpdateV1(request.getContentId(), ContentStatus.FAILED, null, "Generation failed: " + e.getMessage());

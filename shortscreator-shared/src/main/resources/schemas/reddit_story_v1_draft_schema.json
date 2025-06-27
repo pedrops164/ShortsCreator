@@ -7,7 +7,7 @@
     "backgroundVideoId": {
       "type": "string",
       "description": "ID of the selected background video.",
-      "enum": ["minecraft_bg_1"]
+      "enum": ["minecraft1", "gta1"]
     },
     "backgroundMusicId": {
       "type": "string",
@@ -17,7 +17,8 @@
     "avatarImageUrl": {
       "type": "string",
       "format": "uri",
-      "description": "URL to the avatar image."
+      "description": "URL to the avatar image.",
+      "default": "assets/reddit/reddit_avatar_placeholder.png"
     },
     "username": {
       "type": "string",
@@ -40,11 +41,22 @@
     },
     "comments": {
       "type": "array",
-      "description": "List of individual comment texts.",
+      "description": "List of comment objects.",
       "minItems": 0,
       "items": {
-        "type": "string",
-        "minLength": 3
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "author": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
       }
     },
     "aspectRatio": {
@@ -69,12 +81,19 @@
     "subtitlesPosition": {
       "type": "string",
       "description": "Position of the subtitles (e.g., 'bottom').",
-      "enum": ["bottom", "center", "top"]
+      "enum": ["bottom", "center", "top"],
+      "default": "bottom"
     },
     "voiceSelection": {
       "type": "string",
       "description": "Selected voice for narration.",
-      "enum": ["elevenlabs_voice_1", "openai_echo"]
+      "enum": ["elevenlabs_voice_1", "openai_echo", "alloy"]
+    },
+    "theme": {
+      "type": "string",
+      "description": "Theme for the Reddit post (e.g., 'dark', 'light').",
+      "enum": ["dark", "light"],
+      "default": "dark"
     }
   },
   "additionalProperties": false

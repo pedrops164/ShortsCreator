@@ -1,8 +1,11 @@
 package com.content_generation_service.messaging;
 
 import com.content_generation_service.config.AppProperties;
+import com.content_generation_service.generation.orchestrator.RedditStoryOrchestrator;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shortscreator.shared.dto.GenerationRequestV1;
+import com.shortscreator.shared.dto.OutputAssetsV1;
 import com.shortscreator.shared.dto.StatusUpdateV1;
 import com.shortscreator.shared.enums.ContentStatus;
 import com.shortscreator.shared.validation.TemplateValidator;
@@ -14,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,6 +42,8 @@ class GenerationRequestListenerTest {
     private AppProperties.RabbitMQ rabbitMQMock;
     @Mock
     private AppProperties.RoutingKeys routingKeysMock;
+    @Mock
+    private RedditStoryOrchestrator redditStoryOrchestrator;
 
     @InjectMocks // Creates an instance of the listener and injects the mocks into it
     private GenerationRequestListener listener;
@@ -60,6 +66,8 @@ class GenerationRequestListenerTest {
     void whenValidatorSucceeds_thenGenerationProceeds() {
         // Instruct the mock validator to do nothing (succeed)
         doNothing().when(templateValidator).validate(anyString(), any(), eq(true));
+        when(redditStoryOrchestrator.generate(any()))
+            .thenReturn(new OutputAssetsV1("final_video.mp4", 60));
         
         listener.handleGenerationRequest(sampleRequest);
 
@@ -68,6 +76,7 @@ class GenerationRequestListenerTest {
         ArgumentCaptor<StatusUpdateV1> captor = ArgumentCaptor.forClass(StatusUpdateV1.class);
         verify(rabbitTemplate).convertAndSend(anyString(), anyString(), captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(ContentStatus.COMPLETED);
+        verify(redditStoryOrchestrator, times(1)).generate(any());
     }
 
     @Test

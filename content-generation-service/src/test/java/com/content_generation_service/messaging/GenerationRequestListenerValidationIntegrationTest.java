@@ -1,13 +1,16 @@
 package com.content_generation_service.messaging;
 
 import com.content_generation_service.config.AppProperties;
+import com.content_generation_service.generation.orchestrator.RedditStoryOrchestrator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shortscreator.shared.dto.GenerationRequestV1;
+import com.shortscreator.shared.dto.OutputAssetsV1;
 import com.shortscreator.shared.dto.StatusUpdateV1;
 import com.shortscreator.shared.enums.ContentStatus;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.springframework.amqp.core.AmqpAdmin;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.TopicExchange;
@@ -20,6 +23,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -28,6 +32,8 @@ import org.springframework.amqp.core.Queue;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 @SpringBootTest
 @Testcontainers
@@ -65,6 +71,8 @@ class GenerationRequestListenerValidationIntegrationTest {
     private AmqpAdmin amqpAdmin;
     @Autowired
     private ObjectMapper objectMapper;
+    @MockitoBean
+    private RedditStoryOrchestrator redditStoryOrchestrator;
 
     final String statusQueueName = "q.status.updates";
     final String generationRequestPrefix = "request.generate."; // This is the prefix for generation requests
@@ -97,16 +105,21 @@ class GenerationRequestListenerValidationIntegrationTest {
         // This payload has all the other required fields but is specifically missing "postTitle".
         String invalidParamsJson = """
         {
-          "username": "test-user",
+          "username": "ask-dev",
           "subreddit": "r/askreddit",
-          "postDescription": "A test post description",
-          "comments": [ { "author": "c-user", "text": "a comment" } ],
-          "voiceSelection": "en-US-Standard-C",
-          "backgroundVideoId": "minecraft_parkour_1",
+          "theme": "dark",
+          "avatarImageUrl": "assets/reddit/reddit_avatar_placeholder.png",
+          "postDescription": "Sometimes the best wisdom is hidden in humor. What have you got?",
+          "comments": [
+            { "author": "user1", "text": "Always borrow money from a pessimist. They'll never expect it back." },
+            { "author": "user2", "text": "Never wrestle with a pig. You both get dirty and besides, the pig likes it." }
+          ],
+          "voiceSelection": "alloy",
+          "backgroundVideoId": "minecraft1",
           "aspectRatio": "9:16",
           "showSubtitles": true,
-          "subtitlesFont": "Roboto",
-          "subtitlesColor": "yellow",
+          "subtitlesFont": "Montserrat ExtraBold",
+          "subtitlesColor": "#f6ff00",
           "subtitlesPosition": "bottom"
         }
         """;
@@ -131,26 +144,33 @@ class GenerationRequestListenerValidationIntegrationTest {
         // --- ARRANGE ---
         String exchangeName = appProperties.getRabbitmq().getExchange();
         String routingKey = generationRequestPrefix + "reddit_story_v1";
+        when(redditStoryOrchestrator.generate(any()))
+            .thenReturn(new OutputAssetsV1("final_video.mp4", 60));
 
-        // This payload has all the other required fields but is specifically missing "postTitle".
-        String invalidParamsJson = """
+        // This payload has all the required fields.
+        String validParamsJson = """
         {
-          "postTitle": "Post title",
-          "username": "test-user",
+          "postTitle": "What's a piece of advice that sounds like a joke but is actually profound?",
+          "username": "ask-dev",
           "subreddit": "r/askreddit",
-          "postDescription": "A test post description",
-          "comments": [],
-          "voiceSelection": "openai_echo",
-          "backgroundVideoId": "minecraft_bg_1",
+          "theme": "dark",
+          "avatarImageUrl": "assets/reddit/reddit_avatar_placeholder.png",
+          "postDescription": "Sometimes the best wisdom is hidden in humor. What have you got?",
+          "comments": [
+            { "author": "user1", "text": "Always borrow money from a pessimist. They'll never expect it back." },
+            { "author": "user2", "text": "Never wrestle with a pig. You both get dirty and besides, the pig likes it." }
+          ],
+          "voiceSelection": "alloy",
+          "backgroundVideoId": "minecraft1",
           "aspectRatio": "9:16",
           "showSubtitles": true,
-          "subtitlesFont": "Roboto",
-          "subtitlesColor": "#FFFFFF",
+          "subtitlesFont": "Montserrat ExtraBold",
+          "subtitlesColor": "#f6ff00",
           "subtitlesPosition": "bottom"
         }
         """;
-        JsonNode invalidParams = objectMapper.readTree(invalidParamsJson);
-        GenerationRequestV1 request = new GenerationRequestV1("content-id", "user-id-valid", "reddit_story_v1", invalidParams);
+        JsonNode validParams = objectMapper.readTree(validParamsJson);
+        GenerationRequestV1 request = new GenerationRequestV1("content-id", "user-id-valid", "reddit_story_v1", validParams);
 
         // --- ACT ---
         rabbitTemplate.convertAndSend(exchangeName, routingKey, request);

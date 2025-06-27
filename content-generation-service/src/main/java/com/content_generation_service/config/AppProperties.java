@@ -5,7 +5,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 
 @Component
 @ConfigurationProperties(prefix = "app")
@@ -14,6 +16,32 @@ import jakarta.validation.constraints.NotEmpty;
 public class AppProperties {
 
     private RabbitMQ rabbitmq = new RabbitMQ();
+
+    @Valid
+    @NotNull
+    private Tts tts = new Tts();
+
+    @Valid
+    @NotNull
+    private Transcription transcription = new Transcription();
+    
+    @Data
+    public static class Transcription {
+        @NotEmpty
+        private String provider; // e.g., "openai"
+    }
+    
+    @Data
+    public static class Tts {
+        @NotEmpty
+        private String provider; // e.g., "openai"
+        private Openai openai = new Openai();
+    }
+    
+    @Data
+    public static class Openai {
+        private String apiKey;
+    }
 
     @Data
     public static class RabbitMQ {
