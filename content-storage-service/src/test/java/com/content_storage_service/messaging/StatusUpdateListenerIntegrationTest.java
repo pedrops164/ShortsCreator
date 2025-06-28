@@ -1,9 +1,11 @@
 package com.content_storage_service.messaging;
 
+import com.content_storage_service.config.AppProperties;
 import com.content_storage_service.model.Content;
 import com.content_storage_service.repository.ContentRepository;
-import com.shortscreator.shared.dto.OutputAssetsV1;
-import com.shortscreator.shared.dto.StatusUpdateV1;
+import com.content_storage_service.service.VideoUploadProcessorService;
+import com.shortscreator.shared.dto.GenerationResultV1;
+import com.shortscreator.shared.dto.VideoUploadJobV1;
 import com.shortscreator.shared.enums.ContentStatus;
 import com.shortscreator.shared.enums.ContentType;
 import org.junit.jupiter.api.AfterEach;
@@ -18,6 +20,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -27,6 +30,8 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.ArgumentMatchers.any;
 
 @SpringBootTest
 @Testcontainers
@@ -37,6 +42,9 @@ class StatusUpdateListenerIntegrationTest {
     static RabbitMQContainer rabbitMQContainer = new RabbitMQContainer("rabbitmq:4.1.1-management");
     @Container
     static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:8.0.10");
+
+    @Autowired
+    private AppProperties appProperties; // Inject the properties bean
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
@@ -62,6 +70,8 @@ class StatusUpdateListenerIntegrationTest {
     private RabbitTemplate rabbitTemplate;
     @Autowired
     private ContentRepository contentRepository;
+    @MockitoBean
+    private VideoUploadProcessorService processorService;
 
     // Clean up the database after each test to ensure isolation
     @AfterEach
@@ -72,6 +82,8 @@ class StatusUpdateListenerIntegrationTest {
     @Test
     void whenCompletedStatusUpdateReceived_thenContentIsUpdatedInDb() {
         // --- ARRANGE ---
+        // set processGenerationResult function to do nothing
+        doNothing().when(processorService).processUploadJob(any(VideoUploadJobV1.class));
         // Create and save a document in a "processing" state to the test database.
         Content contentToUpdate = Content.builder()
                 .userId("user-123")
@@ -84,13 +96,19 @@ class StatusUpdateListenerIntegrationTest {
         String contentId = savedContent.getId();
 
         // Create the DTO for the message we're going to send.
-        OutputAssetsV1 assets = new OutputAssetsV1("https://final.video/url.mp4", 123);
-        StatusUpdateV1 updateDto = new StatusUpdateV1(contentId, ContentStatus.COMPLETED, assets, null);
-
+        VideoUploadJobV1 job = new VideoUploadJobV1();
+        GenerationResultV1 generationResult = new GenerationResultV1(
+                contentId,
+                ContentStatus.COMPLETED,
+                job,
+                null
+        );
+        final String exchangeName = appProperties.getRabbitmq().getExchange();
+        final String generationResultRoutingKey = appProperties.getRabbitmq().getRoutingKeys().getGenerationResult();
         // --- ACT ---
         // Send the message to the real RabbitMQ queue that our listener is watching.
         // We send it to the exchange with the correct routing key.
-        rabbitTemplate.convertAndSend("content_exchange", "update.status.completed", updateDto);
+        rabbitTemplate.convertAndSend(exchangeName, generationResultRoutingKey, generationResult);
 
         // --- ASSERT ---
         // Poll the database until our condition is met or a timeout occurs.
@@ -98,8 +116,6 @@ class StatusUpdateListenerIntegrationTest {
             Content updatedContent = contentRepository.findById(contentId).block();
             assertThat(updatedContent).isNotNull();
             assertThat(updatedContent.getStatus()).isEqualTo(ContentStatus.COMPLETED);
-            assertThat(updatedContent.getOutputAssets()).isNotNull();
-            assertThat(updatedContent.getOutputAssets().getFinalVideoUrl()).isEqualTo("https://final.video/url.mp4");
             assertThat(updatedContent.getErrorMessage()).isNull();
         });
     }

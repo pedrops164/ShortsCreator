@@ -9,9 +9,9 @@ import com.shortscreator.shared.enums.ContentStatus;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class StatusUpdateV1 {
+public class GenerationResultV1 {
     private String contentId;
     private ContentStatus status; // e.g., "COMPLETED", "FAILED"
-    private OutputAssetsV1 outputAssets;
+    private VideoUploadJobV1 videoUploadJobV1;
     private String errorMessage;
 }

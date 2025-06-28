@@ -24,6 +24,27 @@ public class AppProperties {
     @Valid
     @NotNull
     private Transcription transcription = new Transcription();
+/* 
+    @Valid
+    @NotNull
+    private Storage storage = new Storage();
+
+    @Valid
+    @NotNull
+    private Queues queues = new Queues();
+
+    @Data
+    public static class Storage {
+        @Valid
+        @NotNull
+        private Efs efs = new Efs();
+    }
+
+    @Data
+    public static class Efs {
+        @NotEmpty
+        private String basePath; // e.g., "temp/efs-shared"
+    } */
     
     @Data
     public static class Transcription {
@@ -55,15 +76,13 @@ public class AppProperties {
     public static class Queues {
         @NotEmpty
         private String generationRequests;
-        @NotEmpty
-        private String statusUpdates;
     }
 
     @Data
     public static class RoutingKeys {
         @NotEmpty
-        private String generationRequestPrefix;
+        private String generationResult;
         @NotEmpty
-        private String statusUpdate;
+        private String generationRequestPrefix; // e.g., "request.generate."
     }
 }

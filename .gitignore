@@ -44,3 +44,9 @@ application.properties
 application.yml
 .env.dev
 .env.prod
+
+
+eureka-server
+auth-service
+user-service
+gateway-service

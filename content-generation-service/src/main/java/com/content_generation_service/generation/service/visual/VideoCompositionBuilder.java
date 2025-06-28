@@ -150,8 +150,14 @@ public class VideoCompositionBuilder {
         return this;
     }
     
-    public Path buildAndExecute() throws IOException, InterruptedException {
-        Path finalVideoPath = Files.createTempFile("final-video-" + UUID.randomUUID(), ".mp4");
+    public Path buildAndExecute(Path baseSavePath) throws IOException, InterruptedException {
+        //Path finalVideoPath = Files.createTempFile(baseSavePath + "final-video-" + UUID.randomUUID(), ".mp4");
+        // create the final video path with a unique name
+        Files.createDirectories(baseSavePath); // Ensure the base path exists
+        if (!Files.isDirectory(baseSavePath)) {
+            throw new IllegalArgumentException("Base save path must be a directory: " + baseSavePath);
+        }
+        Path finalVideoPath = baseSavePath.resolve("final-video-" + UUID.randomUUID() + ".mp4");
 
         List<String> command = new ArrayList<>();
         command.add("ffmpeg");

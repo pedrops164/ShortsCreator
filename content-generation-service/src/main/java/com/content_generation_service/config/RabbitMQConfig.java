@@ -15,9 +15,6 @@ public class RabbitMQConfig {
 
     private final AppProperties appProperties; // 1. Inject the properties bean
 
-    // We will listen for reddit_story_v1 requests specifically
-    private static final String REDDIT_STORY_ROUTING_KEY = "request.generate.reddit_story_v1";
-
     @Bean
     public TopicExchange contentExchange() {
         // 2. Use the getter from the properties class
@@ -30,10 +27,11 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Binding generationBinding(Queue generationRequestQueue, TopicExchange contentExchange) {
+    public Binding redditStoryBinding(Queue generationRequestQueue, TopicExchange contentExchange) {
+        final String generationRequestPrefix = appProperties.getRabbitmq().getRoutingKeys().getGenerationRequestPrefix();
         // Bind the queue to the exchange for the specific templateId we support
         return BindingBuilder.bind(generationRequestQueue)
                              .to(contentExchange)
-                             .with(REDDIT_STORY_ROUTING_KEY);
+                             .with(generationRequestPrefix + "reddit_story_v1");
     }
 }

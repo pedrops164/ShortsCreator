@@ -11,10 +11,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
-import com.shortscreator.shared.dto.OutputAssetsV1;
+import org.springframework.beans.factory.annotation.Value;
+
+import com.shortscreator.shared.dto.VideoUploadJobV1;
 
 
 @Slf4j
@@ -23,15 +29,30 @@ import com.shortscreator.shared.dto.OutputAssetsV1;
 public class RedditStoryOrchestrator {
 
     public static final String REDDIT_STORY_TEMPLATE_ID = "reddit_story_v1";
+
     private final RedditTextToSpeechService textToSpeechService;
     private final VideoAssetService videoAssetService;
     private final SubtitleService subtitleService;
     private final RedditImageService redditImageService;
+
+    // Use a clear property for the shared temporary path
+    @Value("${app.storage.shared-temp.base-path}")
+    private String sharedTempBasePath;
     
     // This is the main business logic flow
-    public OutputAssetsV1 generate(JsonNode params) {
+    public VideoUploadJobV1 generate(JsonNode params, String contentId, String userId) {
         log.info("Starting Reddit Story generation...");
 
+        // Ensure the shared directory exists before we start
+        Path sharedOutputPath = Paths.get(sharedTempBasePath);
+        try {
+            Files.createDirectories(sharedOutputPath);
+        } catch (IOException e) {
+            log.error("Cannot create shared temporary directory at: {}", sharedOutputPath, e);
+            throw new RuntimeException("Failed to initialize shared storage", e);
+        }
+        
+        Path finalVideoPath;
         try {
             // 1. Get narration from TTS API
             RedditNarration narration = textToSpeechService.generateNarration(params.get("postTitle").asText(), params.get("postDescription").asText(), params.get("comments"), params.get("voiceSelection").asText());
@@ -47,22 +68,27 @@ public class RedditStoryOrchestrator {
 
             // 5. Combine everything into a final video composition
             VideoCompositionBuilder compositionBuilder = new VideoCompositionBuilder();
-            Path finalVideo = compositionBuilder
+            finalVideoPath = compositionBuilder
                 .withBackground(backgroundVideo, 1080, 1920) // Assuming 9:16 aspect ratio
                 .withNarration(narration.getAudioFilePath())
                 .withOverlay(titleImage, narration.getTitleDurationSeconds(), false)
                 .withSubtitles(subtitleFile)
-                .withOutputDuration(narration.getDurationSeconds())
-                .buildAndExecute();
-
-            // 6. Upload final video to cloud storage (e.g., S3) and get URL
-            String finalVideoUrl = "https://your-cloud-storage.com/" + finalVideo.getFileName();
-            log.info("Reddit Story generation complete. Final video at {}", finalVideoUrl);
-
-            return new OutputAssetsV1(finalVideoUrl, 60); // Return the final result
+                //.withOutputDuration(narration.getDurationSeconds())
+                .withOutputDuration(3)
+                .buildAndExecute(sharedOutputPath);
         } catch (Exception e) {
-            log.error("Error during Reddit Story generation", e);
-            throw new RuntimeException("Failed to generate Reddit Story", e);
+            log.error("Video composition failed for contentId: {}", contentId, e);
+            throw new RuntimeException("Failed to compose final video", e);
         }
+
+        // --- Step 6: Create and send the generation result message ---
+        String destinationPath = String.format("reddit-stories/%s/%s.mp4", contentId, UUID.randomUUID());
+
+        VideoUploadJobV1 job = new VideoUploadJobV1(
+            finalVideoPath.toAbsolutePath().toString(),
+            destinationPath,
+            userId
+        );
+        return job;
     }
 }

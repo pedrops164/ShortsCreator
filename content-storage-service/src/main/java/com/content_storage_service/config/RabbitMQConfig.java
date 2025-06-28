@@ -23,15 +23,15 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue statusUpdateQueue() {
-        return new Queue(appProperties.getRabbitmq().getQueues().getStatusUpdates(), true);
+    public Queue generationResultsQueue() {
+        return new Queue(appProperties.getRabbitmq().getQueues().getGenerationResults(), true);
     }
 
     @Bean
-    public Binding statusUpdateBinding(Queue statusUpdateQueue, TopicExchange contentExchange) {
+    public Binding generationResultsBinding(Queue generationResultsQueue, TopicExchange contentExchange) {
         // Bind to any message starting with "update.status."
-        return BindingBuilder.bind(statusUpdateQueue)
+        return BindingBuilder.bind(generationResultsQueue)
                             .to(contentExchange)
-                            .with(appProperties.getRabbitmq().getRoutingKeys().getStatusUpdate() + ".#"); 
+                            .with(appProperties.getRabbitmq().getRoutingKeys().getGenerationResult()); 
     }
 }

@@ -9,8 +9,8 @@ import com.shortscreator.shared.enums.ContentStatus;
 import com.content_storage_service.repository.ContentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.shortscreator.shared.dto.GenerationRequestV1;
-import com.shortscreator.shared.dto.OutputAssetsV1;
-import com.shortscreator.shared.dto.StatusUpdateV1;
+import com.shortscreator.shared.dto.GenerationResultV1;
+import com.shortscreator.shared.dto.VideoUploadJobV1;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
@@ -30,6 +30,7 @@ public class ContentService {
 
     private final RabbitTemplate rabbitTemplate; // Inject RabbitTemplate
     private final AppProperties appProperties; // Inject the properties bean
+    private final VideoUploadProcessorService processorService;
 
     /**
      * Creates a new content draft.
@@ -171,13 +172,18 @@ public class ContentService {
                 })
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Content not found or unauthorized for ID: " + contentId)));
     }
-
-    public Mono<Content> processStatusUpdate(StatusUpdateV1 update) {
-        log.info("Processing status update for content [{}]. New status: {}", update.getContentId(), update.getStatus());
-        return contentRepository.findById(update.getContentId())
+    /**
+     * Processes the result of a content generation request.
+     * This updates the content status based on the GenerationResultV1 received.
+     * @param generationResult The result of the content generation.
+     * @return A Mono emitting the updated Content object.
+     */
+    public Mono<Content> processGenerationResult(GenerationResultV1 generationResult) {
+        log.info("Processing status update for content [{}]. New status: {}", generationResult.getContentId(), generationResult.getStatus());
+        return contentRepository.findById(generationResult.getContentId())
             .switchIfEmpty(Mono.error(new IllegalArgumentException("Content not found for status update")))
             .flatMap(content -> {
-                ContentStatus newStatus = update.getStatus();
+                ContentStatus newStatus = generationResult.getStatus();
 
                 // Idempotency check: Don't re-process a terminal state.
                 if (content.getStatus() == ContentStatus.COMPLETED || content.getStatus() == ContentStatus.FAILED) {
@@ -188,12 +194,11 @@ public class ContentService {
                 content.setStatus(newStatus);
                 if (newStatus == ContentStatus.COMPLETED) {
                     log.info("Content [{}] has been successfully COMPLETED.", content.getId());
-                    OutputAssetsV1 assets = update.getOutputAssets();
-                    content.setOutputAssets(assets);
-                    content.setErrorMessage(null);
+                    VideoUploadJobV1 job = generationResult.getVideoUploadJobV1();
+                    processorService.processUploadJob(job);
                 } else if (newStatus == ContentStatus.FAILED) {
-                    log.error("Content [{}] has FAILED processing. Reason: {}", content.getId(), update.getErrorMessage());
-                    content.setErrorMessage(update.getErrorMessage());
+                    log.error("Content [{}] has FAILED processing. Reason: {}", content.getId(), generationResult.getErrorMessage());
+                    content.setErrorMessage(generationResult.getErrorMessage());
                 }
                 
                 return contentRepository.save(content)

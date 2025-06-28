@@ -21,3 +21,17 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8080/realms/shorts-creator-realm
+
+app:
+  storage:
+    # Shared temporary filesystem, simulating AWS EFS.
+    # Both CGS and CSS must have access to this location.
+    shared-temp:
+      base-path: "${user.home}/app-dev/shared-temp-storage"
+
+    # Permanent local storage for the CSS, simulating AWS S3.
+    # Only the CSS manages this directory.
+    local-permanent:
+      location: "${user.home}/app-dev/permanent-local-storage"
+      # This is the public-facing URL prefix for content stored here.
+      base-url: "http://localhost:8083/content/" # Assuming CSS runs on 8083

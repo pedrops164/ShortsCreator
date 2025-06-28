@@ -6,8 +6,7 @@ import com.content_storage_service.repository.ContentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shortscreator.shared.dto.GenerationRequestV1;
-import com.shortscreator.shared.dto.OutputAssetsV1;
-import com.shortscreator.shared.dto.StatusUpdateV1;
+import com.shortscreator.shared.dto.GenerationResultV1;
 import com.shortscreator.shared.enums.ContentStatus;
 import com.shortscreator.shared.enums.ContentType;
 import com.shortscreator.shared.validation.TemplateValidator;
@@ -45,6 +44,9 @@ class ContentServiceTest {
 
     @InjectMocks // Creates an instance of ContentService and injects the mocks
     private ContentService contentService;
+
+    @Mock
+    private VideoUploadProcessorService processorService; // Mock the processor service
 
     private Content sampleDraft;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -195,20 +197,19 @@ class ContentServiceTest {
         @Test
         void whenStatusIsCompleted_updatesContentCorrectly() {
             // ARRANGE
-            OutputAssetsV1 assets = new OutputAssetsV1("http://video.url", 60);
-            StatusUpdateV1 update = new StatusUpdateV1("content-id-123", ContentStatus.COMPLETED, assets, null);
-            
+            // do nothing when processorService.processUploadJob is called
+            doNothing().when(processorService).processUploadJob(any());
+            GenerationResultV1 generationResult = new GenerationResultV1("contend-id-123", ContentStatus.COMPLETED, null, null);
             when(contentRepository.findById(anyString())).thenReturn(Mono.just(sampleDraft));
             when(contentRepository.save(any(Content.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
-
+            
             // ACT
-            Mono<Content> resultMono = contentService.processStatusUpdate(update);
+            Mono<Content> resultMono = contentService.processGenerationResult(generationResult);
             
             // ASSERT
             StepVerifier.create(resultMono)
                 .assertNext(content -> {
                     assertThat(content.getStatus()).isEqualTo(ContentStatus.COMPLETED);
-                    assertThat(content.getOutputAssets().getFinalVideoUrl()).isEqualTo("http://video.url");
                     assertThat(content.getErrorMessage()).isNull();
                 })
                 .verifyComplete();
@@ -218,11 +219,11 @@ class ContentServiceTest {
         void whenContentIsInTerminalState_ignoresUpdate() {
             // ARRANGE
             sampleDraft.setStatus(ContentStatus.COMPLETED); // Set a terminal state
-            StatusUpdateV1 update = new StatusUpdateV1("content-id-123", ContentStatus.FAILED, null, "A new error");
+            GenerationResultV1 generationResult = new GenerationResultV1("contend-id-123", ContentStatus.COMPLETED, null, null);
             when(contentRepository.findById(anyString())).thenReturn(Mono.just(sampleDraft));
 
             // ACT
-            Mono<Content> resultMono = contentService.processStatusUpdate(update);
+            Mono<Content> resultMono = contentService.processGenerationResult(generationResult);
 
             // ASSERT
             StepVerifier.create(resultMono)

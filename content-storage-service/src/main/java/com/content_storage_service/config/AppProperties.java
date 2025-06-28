@@ -26,9 +26,7 @@ public class AppProperties {
     @Data
     public static class Queues {
         @NotEmpty
-        private String generationRequests;
-        @NotEmpty
-        private String statusUpdates;
+        private String generationResults;
     }
 
     @Data
@@ -36,6 +34,6 @@ public class AppProperties {
         @NotEmpty
         private String generationRequestPrefix;
         @NotEmpty
-        private String statusUpdate;
+        private String generationResult;
     }
 }
