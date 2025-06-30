@@ -1,6 +1,5 @@
 package com.content_storage_service.messaging;
 
-import com.content_storage_service.config.AppProperties;
 import com.content_storage_service.service.ContentService;
 import com.shortscreator.shared.dto.GenerationResultV1;
 import org.junit.jupiter.api.Test;

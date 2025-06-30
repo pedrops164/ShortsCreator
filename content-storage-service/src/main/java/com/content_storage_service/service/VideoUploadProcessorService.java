@@ -24,8 +24,10 @@ public class VideoUploadProcessorService {
      * This method is agnostic to the message source.
      *
      * @param job The deserialized job message.
+     * @return The final URL of the uploaded video.
+     * @throws NoSuchElementException If the source file does not exist.
      */
-    public void processUploadJob(VideoUploadJobV1 job) {
+    public String processUploadJob(VideoUploadJobV1 job) {
         log.info("Processing video upload job for userId: {}", job.getUserId());
         Path sourcePath = Paths.get(job.getSourcePath());
 
@@ -42,17 +44,17 @@ public class VideoUploadProcessorService {
             log.info("Successfully stored video for userId: {}. Final URL: {}", job.getUserId(), finalUrl);
 
             // 3. Clean up the temporary file ONLY AFTER a successful upload
-            try {
-                Files.delete(sourcePath);
-                log.info("Successfully cleaned up temporary file: {}", sourcePath);
-            } catch (IOException e) {
-                // This is not a fatal error for the job itself, so we just log a warning.
-                log.warn("Upload was successful, but failed to clean up temporary file: {}", sourcePath, e);
-            }
+            //try {
+            //    Files.delete(sourcePath);
+            //    log.info("Successfully cleaned up temporary file: {}", sourcePath);
+            //} catch (IOException e) {
+            //    // This is not a fatal error for the job itself, so we just log a warning.
+            //    log.warn("Upload was successful, but failed to clean up temporary file: {}", sourcePath, e);
+            //}
             
             // 4. TODO: Send completion notification
-            log.info("TODO: Send completion notification for userId: {}", job.getUserId());
 
+            return finalUrl;
         } catch (IOException e) {
             // Failure during storageService.store() - this is a transient error.
             log.error("Storage operation failed for job: {}. Error: {}", job, e.getMessage());

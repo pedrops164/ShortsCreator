@@ -56,6 +56,15 @@ public class ContentController {
         return contentService.getUserDrafts(userId);
     }
 
+    // Endpoint to get all content for the authenticated user
+    @GetMapping("/content")
+    @ResponseStatus(HttpStatus.OK)
+    @PreAuthorize("isAuthenticated()") // Ensure the user is authenticated
+    public Flux<Content> getUserContent(Principal principal) {
+        String userId = principal.getName(); // Get authenticated user ID
+        return contentService.getUserContent(userId);
+    }
+
     // Endpoint to get a specific content item (draft or completed) by ID
     @GetMapping("/{contentId}")
     @ResponseStatus(HttpStatus.OK)
@@ -75,7 +84,7 @@ public class ContentController {
         String userId = principal.getName(); // Get authenticated user ID
         return contentService.submitForGeneration(contentId, userId)
                 .onErrorResume(IllegalStateException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage())))
-                .onErrorResume(IllegalArgumentException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage())))
-                .onErrorResume(e -> Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error submitting content for generation.", e)));
+                .onErrorResume(IllegalArgumentException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage())));
+                //.onErrorResume(e -> Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error submitting content for generation.", e)));
     }
 }

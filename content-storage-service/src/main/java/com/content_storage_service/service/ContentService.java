@@ -10,6 +10,7 @@ import com.content_storage_service.repository.ContentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.shortscreator.shared.dto.GenerationRequestV1;
 import com.shortscreator.shared.dto.GenerationResultV1;
+import com.shortscreator.shared.dto.OutputAssetsV1;
 import com.shortscreator.shared.dto.VideoUploadJobV1;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -74,11 +75,12 @@ public class ContentService {
         return contentRepository.findByIdAndUserId(contentId, userId)
                 .flatMap(existingContent -> {
                     log.debug("Found draft [{}] for update. Current status: {}", contentId, existingContent.getStatus());
-                    if (existingContent.getStatus() != ContentStatus.DRAFT) {
-                        log.warn("User [{}] attempted to update content [{}] which is not a DRAFT (status: {})", userId, contentId, existingContent.getStatus());
-                        return Mono.error(new IllegalStateException("Cannot update a content item that is not a DRAFT. Current status: " + existingContent.getStatus()));
+                    if (existingContent.getStatus() != ContentStatus.DRAFT && existingContent.getStatus() != ContentStatus.FAILED) {
+                        log.warn("User [{}] attempted to update content [{}] whose state isnt DRAFT nor FAILED (status: {})", userId, contentId, existingContent.getStatus());
+                        return Mono.error(new IllegalStateException("Cannot update a content item whose state isnt DRAFT nor FAILED. Current status: " + existingContent.getStatus()));
                     }
 
+                    existingContent.setStatus(ContentStatus.DRAFT); // Ensure status is DRAFT for updates
                     // Perform JSON Schema validation on the updatedTemplateParams
                     try {
                         log.debug("Validating updated draft parameters for content [{}]", contentId);
@@ -102,6 +104,16 @@ public class ContentService {
     public Flux<Content> getUserDrafts(String userId) {
         log.info("Fetching all drafts for user [{}]", userId);
         return contentRepository.findByUserIdAndStatus(userId, ContentStatus.DRAFT);
+    }
+
+    /**
+     * Retrieves all content for a specific user.
+     * @param userId The ID of the user.
+     * @return A Flux emitting Content objects.
+     */
+    public Flux<Content> getUserContent(String userId) {
+        log.info("Fetching all drafts for user [{}]", userId);
+        return contentRepository.findByUserId(userId);
     }
 
     /**
@@ -195,7 +207,12 @@ public class ContentService {
                 if (newStatus == ContentStatus.COMPLETED) {
                     log.info("Content [{}] has been successfully COMPLETED.", content.getId());
                     VideoUploadJobV1 job = generationResult.getVideoUploadJobV1();
-                    processorService.processUploadJob(job);
+                    String finalUrl = processorService.processUploadJob(job);
+                    OutputAssetsV1 outputAssets = new OutputAssetsV1(
+                        finalUrl,
+                        60 // Example duration in seconds
+                    );
+                    content.setOutputAssets(outputAssets);
                 } else if (newStatus == ContentStatus.FAILED) {
                     log.error("Content [{}] has FAILED processing. Reason: {}", content.getId(), generationResult.getErrorMessage());
                     content.setErrorMessage(generationResult.getErrorMessage());
