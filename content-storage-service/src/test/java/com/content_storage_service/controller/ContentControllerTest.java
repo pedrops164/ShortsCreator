@@ -2,7 +2,6 @@ package com.content_storage_service.controller;
 
 import com.content_storage_service.dto.ContentCreationRequest;
 import com.content_storage_service.model.Content;
-import com.content_storage_service.service.ContentSecurity;
 import com.content_storage_service.service.ContentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shortscreator.shared.enums.ContentStatus;
@@ -41,24 +40,11 @@ class ContentControllerTest {
     private ContentService contentService;
 
     @Autowired
-    private ContentSecurity contentSecurity;
-
-    @Autowired
     private ObjectMapper objectMapper;
 
     // --- NEW: EXPLICIT TEST CONFIGURATION ---
     @TestConfiguration
     static class ControllerTestConfig {
-        /**
-         * This explicitly creates a mock of ContentSecurity and registers it
-         * in the Spring Context with the specific bean name "contentSecurity".
-         * This is a more robust way to ensure the @PreAuthorize expression can find it.
-         */
-        @Bean("contentSecurity")
-        public ContentSecurity contentSecurity() {
-            return mock(ContentSecurity.class);
-        }
-
         // we are receiving the No bean named 'mongoMappingContext' available error, so we need to add it manually
         @Bean
         public MongoMappingContext mongoMappingContext() {
@@ -110,10 +96,6 @@ class ContentControllerTest {
         // ARRANGE
         String contentId = "draft-to-submit-123";
         String userId = "test-user";
-
-        // Telling our mock bean: "When your isOwner method is called, just return true."
-        when(contentSecurity.isOwner(anyString(), any(Authentication.class)))
-            .thenReturn(Mono.just(true));
 
         Content mockResponse = new Content();
         mockResponse.setId(contentId);

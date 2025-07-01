@@ -40,6 +40,7 @@
     	<module>shortscreator-shared</module>
     	<module>content-storage-service</module>
     	<module>content-generation-service</module>
+    	<module>gateway-service</module>
 	</modules>
 
 	<!-- Added Dependency Management for Spring Cloud -->

@@ -1,14 +1,8 @@
 HELP.md
 target/
-!.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
-
-# Maven cache
-.mvn/
-!/.mvn/wrapper/maven-wrapper.jar
-mvnw
-mvnw.cmd
 
 ### STS ###
 .apt_generated
@@ -37,11 +31,3 @@ build/
 
 ### VS Code ###
 .vscode/
-
-# Environment files
-.env
-application.properties
-application.yml
-.env.dev
-.env.prod
-

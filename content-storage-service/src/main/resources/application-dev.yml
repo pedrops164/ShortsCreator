@@ -11,11 +11,6 @@ spring:
   data:
     mongodb:
       uri: mongodb://user:password@localhost:27017/content_db?authSource=admin
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: user
-    password: password
   security:
     oauth2:
       resourceserver:

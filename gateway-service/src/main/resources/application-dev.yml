@@ -1,0 +1,43 @@
+spring:
+  # --- Security Configuration ---
+  # This section configures the API Gateway to act as an OAuth2 Resource Server.
+  # It will validate incoming JWTs against the provided Keycloak realm.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # The gateway uses this to fetch the public keys required to verify the JWT signature.
+          issuer-uri: http://localhost:8080/realms/shorts-creator-realm
+
+  # --- Gateway Routing Configuration ---
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            # This is a unique identifier for the route to the Content Storage Service (CSS).
+            - id: content-storage-service-route
+            
+              # Requests matching the predicate will be forwarded here.
+              uri: http://localhost:8083
+
+              # Predicates define the conditions for a request to be routed.
+              predicates:
+                # This predicate matches if the request path starts with /api/v1/content.
+                # The '/**' is a wildcard that matches any subpath.
+                - Path=/api/v1/content/**
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowed-origins:
+                  - "http://localhost:3000"
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                allowed-headers:
+                  - Authorization
+                  - Content-Type
+                allow-credentials: true
+                #max-age: 3600
