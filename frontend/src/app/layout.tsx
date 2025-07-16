@@ -1,24 +1,34 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./styles/globals.css";
+import type { Metadata } from 'next';
+import './styles/globals.css';
+import { ThemeProvider } from './providers';
+import NavBar from "@/components/layout/NavBar";
 import SessionProvider from "@/components/layout/SessionProvider";
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
-  title: "Shorts Creator",
-  description: "Automate your short form content",
+  title: 'Shorts Creator',
+  description: 'Automate your short form content',
 };
 
+/**
+ * This is the root layout for the entire application.
+ * It wraps every page with the shared UI from the <Layout> component.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <SessionProvider>{children}</SessionProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <SessionProvider>
+          <ThemeProvider>
+            <NavBar>
+              {/* The NavBar component will render the sidebar and main content */}
+              {children}
+            </NavBar>
+          </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   );

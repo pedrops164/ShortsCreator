@@ -1,0 +1,9 @@
+
+@layer base {
+  [data-theme='dark'] {
+    --background: #0a0a0a; /* Nearly Black */
+    --foreground: #ededed; /* Off-white */
+    --accent: var(--color-gray-600);
+    --primary: var(--color-blue-600);
+  }
+}
