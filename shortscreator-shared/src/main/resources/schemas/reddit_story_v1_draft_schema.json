@@ -22,8 +22,7 @@
     },
     "username": {
       "type": "string",
-      "description": "Username to display.",
-      "minLength": 3
+      "description": "Username to display."
     },
     "subreddit": {
       "type": "string",
@@ -31,13 +30,11 @@
     },
     "postTitle": {
       "type": "string",
-      "description": "Title of the Reddit post.",
-      "minLength": 3
+      "description": "Title of the Reddit post."
     },
     "postDescription": {
       "type": "string",
-      "description": "Description/body of the Reddit post.",
-      "minLength": 5
+      "description": "Description/body of the Reddit post."
     },
     "comments": {
       "type": "array",
@@ -62,7 +59,8 @@
     "aspectRatio": {
       "type": "string",
       "description": "Aspect ratio for the video (e.g., '9:16').",
-      "enum": ["9:16"]
+      "enum": ["9:16"],
+      "default": "9:16"
     },
     "showSubtitles": {
       "type": "boolean",
