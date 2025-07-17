@@ -57,7 +57,12 @@ export default function DraftsPage() {
   useEffect(() => {
     const fetchDrafts = async () => {
       try {
-        const response = await apiClient.get<Draft[]>('/content/drafts');
+        const statusesToFetch = ['DRAFT'];
+        const response = await apiClient.get<Draft[]>('/content', {
+          params: {
+            statuses: statusesToFetch.join(','),
+          },
+        });
         setDrafts(response.data);
       } catch (error) {
         console.error('Failed to fetch drafts:', error);

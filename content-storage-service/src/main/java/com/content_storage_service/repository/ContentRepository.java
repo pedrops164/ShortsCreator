@@ -2,6 +2,9 @@ package com.content_storage_service.repository;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.Collection;
+
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 import com.content_storage_service.model.Content;
 import com.shortscreator.shared.enums.ContentStatus;
@@ -16,4 +19,6 @@ public interface ContentRepository extends ReactiveMongoRepository<Content, Stri
 
     // Custom query to find a specific content object by user id
     Flux<Content> findByUserId(String userId);
+
+    Flux<Content> findByUserIdAndStatusIn(String userId, Collection<ContentStatus> statuses);
 }

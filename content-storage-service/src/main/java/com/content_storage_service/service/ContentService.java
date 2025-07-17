@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Map; // Import Map
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -101,14 +102,21 @@ public class ContentService {
     }
 
     /**
-     * Retrieves all drafts for a specific user.
+     * Retrieves all content for a specific user, optionally filtered by statuses.
      * @param userId The ID of the user.
-     * @return A Flux emitting Content objects with DRAFT status.
+     * @param statuses Optional list of ContentStatus to filter by.
+     * @return A Flux emitting Content objects.
      */
-    public Flux<Content> getUserDrafts(String userId) {
-        log.info("Fetching all drafts for user [{}]", userId);
-        return contentRepository.findByUserIdAndStatus(userId, ContentStatus.DRAFT);
+    public Flux<Content> getUserContentByStatus(String userId, List<ContentStatus> statuses) {
+    // If no statuses are provided, return all content for the user.
+    // Otherwise, filter by the list of statuses.
+    if (statuses == null || statuses.isEmpty()) {
+        return contentRepository.findByUserId(userId);
+    } else {
+        // This requires a new method in your Spring Data repository interface
+        return contentRepository.findByUserIdAndStatusIn(userId, statuses);
     }
+}
 
     /**
      * Retrieves all content for a specific user.

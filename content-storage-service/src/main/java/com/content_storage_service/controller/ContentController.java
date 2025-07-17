@@ -3,8 +3,11 @@ package com.content_storage_service.controller;
 import com.content_storage_service.model.Content;
 import com.content_storage_service.service.ContentService;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.shortscreator.shared.enums.ContentStatus;
 
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -39,18 +42,14 @@ public class ContentController {
                 .onErrorResume(e -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage())));
     }
 
-    // Endpoint to get all drafts for the authenticated user
-    @GetMapping("/drafts")
-    @ResponseStatus(HttpStatus.OK)
-    public Flux<Content> getUserDrafts(@RequestHeader("X-User-ID") String userId) {
-        return contentService.getUserDrafts(userId);
-    }
-
     // Endpoint to get all content for the authenticated user
-    @GetMapping("/content")
+    @GetMapping() // Path is now just /content
     @ResponseStatus(HttpStatus.OK)
-    public Flux<Content> getUserContent(@RequestHeader("X-User-ID") String userId) {
-        return contentService.getUserContent(userId);
+    public Flux<Content> getUserContent(
+            @RequestHeader("X-User-ID") String userId,
+            @RequestParam(required = false) List<ContentStatus> statuses) {
+        // The old /jobs endpoint is no longer needed
+        return contentService.getUserContentByStatus(userId, statuses);
     }
 
     // Endpoint to get a specific content item (draft or completed) by ID

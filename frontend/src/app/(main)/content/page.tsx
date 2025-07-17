@@ -95,10 +95,16 @@ export default function ContentPage() {
 
   // 2. Add useEffect to fetch data from the API
   useEffect(() => {
+    const statusesToFetch = ['PROCESSING', 'COMPLETED', 'FAILED'];
     const fetchContent = async () => {
       try {
         // Fetch content that is NOT a draft (e.g., PROCESSING, COMPLETED, FAILED)
-        const response = await apiClient.get<Draft[]>('/content/content');
+        const response = await apiClient.get<Draft[]>('/content', {
+          params: {
+            // Pass the statuses as a comma-separated string
+            statuses: statusesToFetch.join(','),
+          },
+        });
         setContents(response.data);
       } catch (error) {
         console.error('Failed to fetch content:', error);
