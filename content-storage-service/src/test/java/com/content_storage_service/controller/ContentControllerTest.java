@@ -5,7 +5,6 @@ import com.content_storage_service.model.Content;
 import com.content_storage_service.service.ContentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shortscreator.shared.enums.ContentStatus;
-import com.shortscreator.shared.enums.ContentType;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,10 +21,7 @@ import java.time.Duration;
 
 import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import org.springframework.security.core.Authentication;
 
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 
@@ -67,7 +63,6 @@ class ContentControllerTest {
         // ARRANGE
         ContentCreationRequest request = new ContentCreationRequest();
         request.setTemplateId("reddit_story_v1");
-        request.setContentType(ContentType.REDDIT_STORY);
         request.setTemplateParams(objectMapper.createObjectNode().put("title", "A Test Title"));
 
         // Mock the service layer to return a successfully created Content object
@@ -75,7 +70,7 @@ class ContentControllerTest {
         mockResponse.setId("new-content-id");
         mockResponse.setUserId("test-user");
         mockResponse.setStatus(ContentStatus.DRAFT);
-        when(contentService.createDraft(any(), any(), any(), any())).thenReturn(Mono.just(mockResponse));
+        when(contentService.createDraft(any(), any(), any())).thenReturn(Mono.just(mockResponse));
         
         // ACT & ASSERT
         webTestClient

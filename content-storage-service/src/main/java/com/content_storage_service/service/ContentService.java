@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Map; // Import Map
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,6 +33,7 @@ public class ContentService {
     private final RabbitTemplate rabbitTemplate; // Inject RabbitTemplate
     private final AppProperties appProperties; // Inject the properties bean
     private final VideoUploadProcessorService processorService;
+    private final Map<String, ContentType> templateToContentTypeMap; // Inject the map
 
     /**
      * Creates a new content draft.
@@ -41,8 +43,10 @@ public class ContentService {
      * @param templateParams Initial parameters for the template.
      * @return A Mono emitting the created Content object.
      */
-    public Mono<Content> createDraft(String userId, String templateId, ContentType contentType, JsonNode templateParams) {
+    public Mono<Content> createDraft(String userId, String templateId, JsonNode templateParams) {
         log.info("Attempting to create a new draft for user [{}] with template [{}]", userId, templateId);
+        // Infer ContentType from templateId using the injected map
+        ContentType contentType = inferContentTypeFromTemplateId(templateId);
         try {
             log.debug("Validating initial draft parameters for template [{}]", templateId);
             templateValidator.validate(templateId, templateParams, false);
@@ -222,5 +226,12 @@ public class ContentService {
                 .doOnSuccess(saved -> log.info("Successfully updated status for content [{}] to {}", saved.getId(), saved.getStatus()));
 
             });
+    }
+
+    /**
+     * Helper method to infer ContentType from templateId using the injected map.
+     */
+    private ContentType inferContentTypeFromTemplateId(String templateId) {
+        return templateToContentTypeMap.get(templateId);
     }
 }

@@ -4,7 +4,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import jakarta.validation.constraints.NotNull;
-import com.shortscreator.shared.enums.ContentType;
 import com.fasterxml.jackson.databind.JsonNode;
 
 // DTO for creating a new content draft
@@ -15,8 +14,6 @@ public class ContentCreationRequest {
     // Checking validity of templateId, contentType and templateParams are done in the service layer
     @NotNull(message = "Template ID cannot be null")
     private String templateId;
-    @NotNull(message = "Content Type cannot be null")
-    private ContentType contentType;
     @NotNull(message = "Template parameters cannot be null")
     private JsonNode templateParams;
 }

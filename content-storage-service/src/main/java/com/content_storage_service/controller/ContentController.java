@@ -25,12 +25,12 @@ public class ContentController {
     @PostMapping("/drafts")
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<Content> createContentDraft(@RequestBody ContentCreationRequest request, @RequestHeader("X-User-ID") String userId) {
-        return contentService.createDraft(userId, request.getTemplateId(), request.getContentType(), request.getTemplateParams())
+        return contentService.createDraft(userId, request.getTemplateId(), request.getTemplateParams())
                 .onErrorResume(e -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage())));
     }
 
-    // Endpoint for a user to update an existing draft
-    @PutMapping("/drafts/{contentId}")
+    // Endpoint for a user to update existing content
+    @PutMapping("/{contentId}")
     @ResponseStatus(HttpStatus.OK)
     public Mono<Content> updateContentDraft(@PathVariable String contentId, @RequestBody JsonNode updatedTemplateParams, @RequestHeader("X-User-ID") String userId) {
         return contentService.updateDraft(contentId, userId, updatedTemplateParams)

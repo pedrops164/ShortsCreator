@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shortscreator.shared.dto.GenerationRequestV1;
 import com.shortscreator.shared.dto.GenerationResultV1;
 import com.shortscreator.shared.enums.ContentStatus;
-import com.shortscreator.shared.enums.ContentType;
 import com.shortscreator.shared.validation.TemplateValidator;
 import com.shortscreator.shared.validation.TemplateValidator.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,7 +72,7 @@ class ContentServiceTest {
 
             // ACT
             Mono<Content> resultMono = contentService.createDraft(
-                "user-id-abc", "reddit_story_v1", ContentType.REDDIT_STORY, objectMapper.createObjectNode());
+                "user-id-abc", "reddit_story_v1", objectMapper.createObjectNode());
 
             // ASSERT
             StepVerifier.create(resultMono)
@@ -91,7 +90,7 @@ class ContentServiceTest {
             doThrow(new ValidationException("Invalid params")).when(templateValidator).validate(anyString(), any(), eq(false));
 
             // ACT
-            Mono<Content> resultMono = contentService.createDraft("user-id-abc", "reddit_story_v1", ContentType.REDDIT_STORY, null);
+            Mono<Content> resultMono = contentService.createDraft("user-id-abc", "reddit_story_v1", null);
 
             // ASSERT
             StepVerifier.create(resultMono)
