@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { FileDown, MoreVertical, RefreshCw, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
-import { Draft, ContentStatus } from '@/types/drafts'; // Import shared types
+import { Draft } from '@/types/drafts'; // Import shared types
+import { ContentStatus } from '@/types/enums'; // Import shared enums
 import { getDraftTitle } from '@/lib/helper'; // Import helper function
 
 // Helper to format date

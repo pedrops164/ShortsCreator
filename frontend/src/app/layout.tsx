@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import './styles/globals.css';
 import { ThemeProvider } from './providers';
-import NavBar from "@/components/layout/NavBar";
 import SessionProvider from "@/components/layout/SessionProvider";
 import SessionChecker from '@/components/SessionChecker';
 
@@ -25,10 +24,7 @@ export default function RootLayout({
         <SessionProvider>
           <SessionChecker />
           <ThemeProvider>
-            <NavBar>
-              {/* The NavBar component will render the sidebar and main content */}
-              {children}
-            </NavBar>
+            {children}
           </ThemeProvider>
         </SessionProvider>
       </body>

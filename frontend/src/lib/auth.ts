@@ -2,7 +2,6 @@
 import { AuthOptions, Account, Session } from "next-auth";
 import { JWT } from "next-auth/jwt";
 import KeycloakProvider from "next-auth/providers/keycloak";
-import GoogleProvider from "next-auth/providers/google";
 
 // This variable will hold the promise of the ongoing token refresh.
 let refreshTokenPromise: Promise<JWT> | null = null;
@@ -56,14 +55,10 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 
 export const authOptions: AuthOptions = {
   providers: [
-    /* KeycloakProvider({
+    KeycloakProvider({
       clientId: process.env.KEYCLOAK_CLIENT_ID!,
       clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
       issuer: process.env.KEYCLOAK_ISSUER!,
-    }), */
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
   callbacks: {

@@ -9,3 +9,17 @@
   --color-accent: var(--accent);
   --color-primary: var(--primary);
 }
+
+@keyframes scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Move the container left by exactly half its width to create a seamless loop */
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: scroll 30s linear infinite;
+}
