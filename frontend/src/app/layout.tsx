@@ -3,6 +3,7 @@ import './styles/globals.css';
 import { ThemeProvider } from './providers';
 import NavBar from "@/components/layout/NavBar";
 import SessionProvider from "@/components/layout/SessionProvider";
+import SessionChecker from '@/components/SessionChecker';
 
 export const metadata: Metadata = {
   title: 'Shorts Creator',
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <SessionProvider>
+          <SessionChecker />
           <ThemeProvider>
             <NavBar>
               {/* The NavBar component will render the sidebar and main content */}
