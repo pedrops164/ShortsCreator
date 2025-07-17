@@ -10,7 +10,7 @@ const contentTemplates = [
     title: 'Reddit Story',
     description: 'Turn Reddit threads into engaging videos with background gameplay.',
     videoSrc: '/videos/test_reddit_story.mp4',
-    createUrl: '/create/reddit-story',
+    createUrl: '/editor/create/reddit_story_v1',
   },
   {
     id: 'another-template',
@@ -20,7 +20,7 @@ const contentTemplates = [
     createUrl: '#',
   },
   {
-    id: 'another-template',
+    id: 'another-templatee',
     title: 'Coming Soon',
     description: 'A new template will be available in the near future.',
     videoSrc: '/videos/reddit-example.mp4', // Placeholder
