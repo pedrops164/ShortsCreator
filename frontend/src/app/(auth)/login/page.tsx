@@ -4,10 +4,9 @@ import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 
-// You can create a reusable Button component or use a UI library
 const GoogleSignInButton = () => {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  const callbackUrl = searchParams.get('callbackUrl') || '/create';
 
   const handleSignIn = () => {
     // 1. We call the 'keycloak' provider.

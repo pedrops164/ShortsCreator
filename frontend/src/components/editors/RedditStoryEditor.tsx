@@ -3,8 +3,6 @@
 import { useState, ChangeEvent } from 'react';
 import { RedditStoryDraft, RedditStoryParams } from '@/types';
 import { PlusCircle, Send, Trash2, AlertCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import apiClient from '@/lib/apiClient';
 
 // --- Prop Definition ---
 interface EditorProps {
@@ -72,7 +70,6 @@ const validate = (params: RedditStoryParams): Record<string, string> => {
 // --- Main Editor Component ---
 export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving }: EditorProps) {
   // Merge initial data over the defaults to create a complete state object
-  const router = useRouter();
   const [params, setParams] = useState<RedditStoryParams>({
     ...defaultParams,
     ...initialData.templateParams,
@@ -225,17 +222,6 @@ export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving }: E
           <FormField label="Color" name="subtitlesColor" type="color" value={params.subtitlesColor} onChange={handleChange} className="w-16 h-10" disabled={!params.showSubtitles} error={errors.subtitlesColor}/>
         </div>
       </details>
-
-      {/* --- Save Action --- */}
-      <div className="pt-4 flex justify-end">
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="bg-primary text-white font-bold py-2 px-6 rounded-lg hover:bg-primary/90 transition-colors disabled:bg-accent/30 disabled:cursor-not-allowed"
-        >
-          {isSaving ? 'Saving...' : 'Save Draft'}
-        </button>
-      </div>
     </div>
   );
 }

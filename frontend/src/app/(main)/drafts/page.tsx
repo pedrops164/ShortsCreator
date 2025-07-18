@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MoreVertical, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { Draft } from '@/types/drafts';
 import { getDraftTitle } from '@/lib/helper';
@@ -14,9 +14,16 @@ const formatDate = (isoString: string): string => {
 
 
 // Create DraftCard for mobile, which navigates on click
-const DraftCard = ({ draft }: { draft: Draft }) => {
+const DraftCard = ({ draft, onDelete }: { draft: Draft, onDelete: (id: string) => void }) => {
   const router = useRouter();
   const draftTitle: string = getDraftTitle(draft);
+
+  const handleDeleteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigating to editor
+    if (confirm(`Are you sure you want to delete "${draftTitle}"?`)) {
+      onDelete(draft.id);
+    }
+  };
 
   return (
     <div
@@ -25,9 +32,14 @@ const DraftCard = ({ draft }: { draft: Draft }) => {
     >
       <div className="flex justify-between items-start">
         <h3 className="text-foreground font-semibold text-base flex-1 pr-2">{draftTitle}</h3>
-        <button onClick={(e) => e.stopPropagation()} className="text-accent hover:text-foreground">
-          <MoreVertical size={20} />
-        </button>
+        <div className="flex items-center space-x-2"> {/* Container for multiple actions */}
+            <button onClick={handleDeleteClick} className="text-red-500 hover:text-red-600 transition-colors">
+                <XCircle size={20} />
+            </button>
+            <button onClick={(e) => e.stopPropagation()} className="text-accent hover:text-foreground">
+                <MoreVertical size={20} />
+            </button>
+        </div>
       </div>
       <div className="text-accent text-sm">
         <p><span className="font-medium text-foreground/80">Template:</span> {draft.contentType}</p>
@@ -53,24 +65,43 @@ export default function DraftsPage() {
 
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
+  // Function to fetch drafts
+  const fetchDrafts = async () => {
+    try {
+      const statusesToFetch = ['DRAFT'];
+      const response = await apiClient.get<Draft[]>('/content', {
+        params: {
+          statuses: statusesToFetch.join(','),
+        },
+      });
+      setDrafts(response.data);
+    } catch (error) {
+      console.error('Failed to fetch drafts:', error);
+    }
+  };
+
   // Fetch drafts on mount
   useEffect(() => {
-    const fetchDrafts = async () => {
-      try {
-        const statusesToFetch = ['DRAFT'];
-        const response = await apiClient.get<Draft[]>('/content', {
-          params: {
-            statuses: statusesToFetch.join(','),
-          },
-        });
-        setDrafts(response.data);
-      } catch (error) {
-        console.error('Failed to fetch drafts:', error);
-      }
-    };
-
     fetchDrafts();
   }, []);
+
+  // New function to handle deletion
+  const handleDelete = async (id: string) => {
+    try {
+      await apiClient.delete(`/content/${id}`);
+      // If successful, re-fetch drafts or filter out the deleted one
+      // Re-fetching is simpler for now, ensuring data consistency
+      fetchDrafts();
+      // Adjust currentPage if the last draft on a page was deleted
+      if (currentDrafts.length === 1 && currentPage > 1 && totalPages === currentPage) {
+        setCurrentPage(prev => prev - 1);
+      }
+    } catch (error) {
+      console.error('Failed to delete draft:', error);
+      // You might want to show a toast notification here
+      alert('Failed to delete draft. Please try again.');
+    }
+  };
 
   return (
     <main className="flex-1 p-4 sm:p-6 lg:p-8">
@@ -93,6 +124,7 @@ export default function DraftsPage() {
                   <th className="p-4 text-sm font-semibold text-foreground/80">Template</th>
                   <th className="p-4 text-sm font-semibold text-foreground/80">Created</th>
                   <th className="p-4 text-sm font-semibold text-foreground/80">Status</th>
+                  <th className="p-4 text-sm font-semibold text-foreground/80">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -106,6 +138,20 @@ export default function DraftsPage() {
                     <td className="p-4 text-accent">{draft.contentType}</td>
                     <td className="p-4 text-accent">{formatDate(draft.createdAt)}</td>
                     <td className="p-4 text-accent">{draft.status}</td>
+                    <td className="p-4">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation(); // Prevent row click from navigating
+                                if (confirm(`Are you sure you want to delete "${getDraftTitle(draft)}"?`)) {
+                                    handleDelete(draft.id);
+                                }
+                            }}
+                            className="text-red-500 hover:text-red-600 transition-colors"
+                            title="Delete Draft"
+                        >
+                            <XCircle size={20} />
+                        </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -114,7 +160,7 @@ export default function DraftsPage() {
 
           {/* Mobile Cards */}
           <div className="md:hidden p-4">
-            {currentDrafts.map(draft => <DraftCard key={draft.id} draft={draft} />)}
+            {currentDrafts.map(draft => <DraftCard key={draft.id} draft={draft} onDelete={handleDelete}/>)}
           </div>
 
           {/* --- Pagination --- */}

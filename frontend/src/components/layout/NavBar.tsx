@@ -7,9 +7,9 @@ import { LogIn, LogOut, LayoutGrid, FileText, PlusSquare, User } from 'lucide-re
 import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 
 const navItems = [
+  { name: 'Create Video', path: '/create', icon: <PlusSquare size={18} /> },
   { name: 'Content', path: '/content', icon: <LayoutGrid size={18} /> },
   { name: 'Drafts', path: '/drafts', icon: <FileText size={18} /> },
-  { name: 'Create Video', path: '/create', icon: <PlusSquare size={18} /> },
   { name: 'Account', path: '/account', icon: <User size={18} /> },
 ];
 

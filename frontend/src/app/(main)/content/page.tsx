@@ -162,10 +162,11 @@ export default function ContentPage() {
                         </button>
                       )}
                       {content.status === 'FAILED' && (
-                         <button className="flex items-center justify-center mx-auto gap-2 bg-red-500 text-white font-bold py-2 px-4 rounded-md hover:bg-red-400 transition-colors">
+                         /* <button className="flex items-center justify-center mx-auto gap-2 bg-red-500 text-white font-bold py-2 px-4 rounded-md hover:bg-red-400 transition-colors">
                           <RefreshCw size={18} />
                           <span>Retry</span>
-                        </button>
+                        </button> */
+                         <span className="text-accent italic">Contact staff for help</span>
                       )}
                        {content.status === 'PROCESSING' && (
                          <span className="text-accent italic">No actions available</span>
