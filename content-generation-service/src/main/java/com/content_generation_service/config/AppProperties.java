@@ -54,8 +54,6 @@ public class AppProperties {
     
     @Data
     public static class Tts {
-        @NotEmpty
-        private String provider; // e.g., "openai"
         private Openai openai = new Openai();
     }
     

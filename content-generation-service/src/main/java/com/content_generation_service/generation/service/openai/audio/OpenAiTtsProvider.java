@@ -11,13 +11,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +34,6 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
-@ConditionalOnProperty(name = "app.tts.provider", havingValue = "openai")
 public class OpenAiTtsProvider implements TextToSpeechProvider {
 
     private final WebClient webClient;
@@ -57,63 +61,61 @@ public class OpenAiTtsProvider implements TextToSpeechProvider {
 
         Map<String, Object> requestBody = Map.of("model", "tts-1-hd", "input", text, "voice", voiceId);
 
-        return webClient.post()
-            .uri("/speech")
-            .header("Authorization", "Bearer " + apiKey)
-            .bodyValue(requestBody)
-            .retrieve()
-            .bodyToMono(byte[].class)
-            .flatMap(audioBytes -> saveAndProcessAudio(audioBytes, generateTimings))
-            .doOnError(e -> log.error("Failed during OpenAI TTS API call", e));
+        try {
+            // Create a temporary file path first
+            Path tempAudioFile = Files.createTempFile("openai-narration-" + UUID.randomUUID(), ".mp3");
+
+            // Stream the response directly to the file
+            Flux<DataBuffer> audioStream = webClient.post()
+                    .uri("/speech")
+                    .header("Authorization", "Bearer " + apiKey)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToFlux(DataBuffer.class)
+                    .doOnError(e -> log.error("Failed during OpenAI TTS API call", e));
+            
+            // DataBufferUtils.write returns a Mono<Void> that completes when the file is fully written.
+            return DataBufferUtils.write(audioStream, tempAudioFile, StandardOpenOption.CREATE)
+                .then(Mono.defer(() -> {
+                    // Process the file only AFTER it has been fully written
+                    log.debug("Successfully streamed OpenAI audio to temporary file: {}", tempAudioFile);
+                    return processAudioFile(tempAudioFile, generateTimings);
+                }))
+                .doOnError(err -> {
+                    // Cleanup in case of an error during streaming or processing
+                    try { Files.deleteIfExists(tempAudioFile); } catch (IOException e) { log.warn("Failed to cleanup temp file on error: {}", tempAudioFile); }
+                });
+
+        } catch (IOException e) {
+            log.error("Failed to create temporary file for OpenAI audio", e);
+            return Mono.error(e);
+        }
     }
 
-    private Mono<NarrationSegment> saveAndProcessAudio(byte[] audioBytes, boolean generateTimings) {
-        Path tempAudioFile = null;
-        try {
-            tempAudioFile = Files.createTempFile("openai-narration-" + UUID.randomUUID(), ".mp3");
-            Files.write(tempAudioFile, audioBytes);
-            log.debug("Successfully saved OpenAI audio to temporary file: {}", tempAudioFile);
+    /**
+     * Processes a fully downloaded audio file to extract duration and word timings.
+     */
+    private Mono<NarrationSegment> processAudioFile(Path audioFile, boolean generateTimings) {
+        double realDuration = getAudioDuration(audioFile);
 
-            // Calculate the real duration of the MP3 file
-            double realDuration = getAudioDuration(tempAudioFile);
-
-            // Conditionally generate word timings
-            Mono<List<WordTiming>> timingsMono;
-            if (generateTimings) {
-                timingsMono = transcriptionService.getWordTimings(tempAudioFile);
-                // trim last word timing to match the real duration
-                timingsMono = timingsMono.map(timings -> {
+        Mono<List<WordTiming>> timingsMono;
+        if (generateTimings) {
+            timingsMono = transcriptionService.getWordTimings(audioFile)
+                .map(timings -> {
+                    // Your existing logic to trim the last word timing
                     if (!timings.isEmpty()) {
                         WordTiming lastTiming = timings.get(timings.size() - 1);
                         if (lastTiming.getEndTimeSeconds() > realDuration) {
                             lastTiming.setEndTimeSeconds(realDuration);
-                            log.debug("Adjusted last word timing end time to match real duration: {}", realDuration);
                         }
                     }
                     return timings;
                 });
-            } else {
-                log.debug("Skipping word timing generation as requested.");
-                timingsMono = Mono.just(Collections.emptyList());
-            }
-
-            // After timings are generated (or skipped), create the final segment.
-            // Note: We don't delete the temp file here; that's the orchestrator's job after video composition.
-            Path finalTempAudioFile = tempAudioFile; // Effectively final for lambda
-            return timingsMono.map(timings -> new NarrationSegment(finalTempAudioFile, realDuration, timings));
-
-        } catch (IOException e) {
-            log.error("Failed to write OpenAI audio to temporary file", e);
-            // Clean up the file if it was created before the error
-            if (tempAudioFile != null) {
-                try {
-                    Files.delete(tempAudioFile);
-                } catch (IOException cleanupEx) {
-                    log.error("Failed to clean up temporary audio file: {}", tempAudioFile, cleanupEx);
-                }
-            }
-            return Mono.error(e);
+        } else {
+            timingsMono = Mono.just(Collections.emptyList());
         }
+
+        return timingsMono.map(timings -> new NarrationSegment(audioFile, realDuration, timings));
     }
 
     /**

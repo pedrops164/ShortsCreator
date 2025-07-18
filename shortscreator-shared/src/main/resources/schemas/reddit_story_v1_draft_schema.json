@@ -12,7 +12,7 @@
     "backgroundMusicId": {
       "type": "string",
       "description": "ID of the selected background music (optional).",
-      "enum": ["fun_1", "mysterious_1"]
+      "enum": ["", "fun_1", "mysterious_1"]
     },
     "avatarImageUrl": {
       "type": "string",
@@ -85,7 +85,7 @@
     "voiceSelection": {
       "type": "string",
       "description": "Selected voice for narration.",
-      "enum": ["elevenlabs_voice_1", "openai_echo", "alloy"]
+      "enum": ["openai_alloy", "openai_ash", "openai_ballad", "openai_coral", "openai_echo", "openai_fable", "openai_onyx", "openai_nova", "openai_sage", "openai_shimmer", "openai_verse"]
     },
     "theme": {
       "type": "string",

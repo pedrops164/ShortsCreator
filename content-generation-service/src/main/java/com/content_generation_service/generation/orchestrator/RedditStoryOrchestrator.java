@@ -73,8 +73,7 @@ public class RedditStoryOrchestrator {
                 .withNarration(narration.getAudioFilePath())
                 .withOverlay(titleImage, narration.getTitleDurationSeconds(), false)
                 .withSubtitles(subtitleFile)
-                //.withOutputDuration(narration.getDurationSeconds())
-                .withOutputDuration(3)
+                .withOutputDuration(narration.getDurationSeconds())
                 .buildAndExecute(sharedOutputPath);
         } catch (Exception e) {
             log.error("Video composition failed for contentId: {}", contentId, e);

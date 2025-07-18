@@ -21,20 +21,20 @@ interface Comment {
 
 // --- Default values for a new draft ---
 const defaultParams: RedditStoryParams = {
-  username: 'Author',
-  subreddit: 'AskReddit',
+  username: '',
+  subreddit: '',
   postTitle: '',
   postDescription: '',
   comments: [], // Default to an empty array
   backgroundVideoId: 'minecraft1',
-  //backgroundMusicId: '',
+  backgroundMusicId: '',
   avatarImageUrl: 'assets/reddit/reddit_avatar_placeholder.png',
   aspectRatio: '9:16',
   showSubtitles: true,
   subtitlesColor: '#FFFFFF',
   subtitlesFont: 'Arial',
   subtitlesPosition: 'bottom',
-  voiceSelection: 'elevenlabs_voice_1',
+  voiceSelection: 'openai_alloy',
   theme: 'dark',
 };
 
@@ -189,9 +189,17 @@ export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving }: E
             <option value="mysterious_1">Mysterious Vibe</option>
           </FormSelect>
           <FormSelect label="Narration Voice" name="voiceSelection" value={params.voiceSelection} onChange={handleChange} error={errors.voiceSelection}>
-            <option value="elevenlabs_voice_1">Narrator (Male)</option>
+            <option value="openai_alloy">Alloy (Neutral)</option>
+            <option value="openai_ash">Ash (Male)</option>
+            <option value="openai_ballad">Ballad (Female)</option>
+            <option value="openai_coral">Coral (Male)</option>
             <option value="openai_echo">Echo (Female)</option>
-            <option value="alloy">Alloy (Neutral)</option>
+            <option value="openai_fable">Fable (Female)</option>
+            <option value="openai_onyx">Onyx (Male)</option>
+            <option value="openai_nova">Nova (Female)</option>
+            <option value="openai_sage">Sage (Male)</option>
+            <option value="openai_shimmer">Shimmer (Female)</option>
+            <option value="openai_verse">Verse (Neutral)</option>
           </FormSelect>
           <FormSelect label="Reddit Theme" name="theme" value={params.theme} onChange={handleChange}>
             <option value="dark">Dark</option>

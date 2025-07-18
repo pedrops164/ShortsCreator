@@ -1,6 +1,6 @@
 export type RedditStoryParams = {
   backgroundVideoId?: 'minecraft1' | 'gta1'; // Not required by schema
-  backgroundMusicId?: 'fun_1' | 'mysterious_1'; // Optional based on schema
+  backgroundMusicId?: '' | 'fun_1' | 'mysterious_1'; // Optional based on schema
   avatarImageUrl?: string; // String with 'uri' format - TypeScript string is sufficient
   username?: string; // Not required by schema
   subreddit?: string; // Not required by schema
@@ -15,6 +15,6 @@ export type RedditStoryParams = {
   subtitlesColor?: string; // String with hex pattern - TypeScript string is sufficient
   subtitlesFont?: string; // Not required by schema
   subtitlesPosition?: 'bottom' | 'center' | 'top'; // Not required by schema
-  voiceSelection?: 'elevenlabs_voice_1' | 'openai_echo' | 'alloy'; // Not required by schema
+  voiceSelection?: 'openai_alloy' | 'openai_ash' | 'openai_ballad' | 'openai_coral' | 'openai_echo' | 'openai_fable' | 'openai_onyx' | 'openai_nova' | 'openai_sage' | 'openai_shimmer' | 'openai_verse'; // Not required by schema
   theme?: 'dark' | 'light'; // Not required by schema
 };
