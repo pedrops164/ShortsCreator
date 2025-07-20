@@ -2,9 +2,11 @@ package com.content_generation_service.generation.orchestrator;
 
 import com.content_generation_service.generation.service.reddit.audio.RedditTextToSpeechService;
 import com.content_generation_service.generation.service.reddit.visual.RedditImageService;
+import com.content_generation_service.generation.service.visual.ProgressListener;
 import com.content_generation_service.generation.service.visual.SubtitleService;
 import com.content_generation_service.generation.service.visual.VideoAssetService;
 import com.content_generation_service.generation.service.visual.VideoCompositionBuilder;
+import com.content_generation_service.messaging.VideoStatusUpdateDispatcher;
 import com.content_generation_service.generation.model.RedditNarration;
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -34,6 +36,8 @@ public class RedditStoryOrchestrator {
     private final VideoAssetService videoAssetService;
     private final SubtitleService subtitleService;
     private final RedditImageService redditImageService;
+    private final VideoStatusUpdateDispatcher videoStatusUpdateDispatcher;
+
 
     // Use a clear property for the shared temporary path
     @Value("${app.storage.shared-temp.base-path}")
@@ -42,6 +46,9 @@ public class RedditStoryOrchestrator {
     // This is the main business logic flow
     public VideoUploadJobV1 generate(JsonNode params, String contentId, String userId) {
         log.info("Starting Reddit Story generation...");
+
+        // Create a scoped listener for this specific content generation
+        ProgressListener scopedProgressListener = videoStatusUpdateDispatcher.forContent(userId, contentId);
 
         // Ensure the shared directory exists before we start
         Path sharedOutputPath = Paths.get(sharedTempBasePath);
@@ -74,9 +81,11 @@ public class RedditStoryOrchestrator {
                 .withOverlay(titleImage, narration.getTitleDurationSeconds(), false)
                 .withSubtitles(subtitleFile)
                 .withOutputDuration(narration.getDurationSeconds())
+                .withProgressListener(scopedProgressListener) // Pass the scoped listener
                 .buildAndExecute(sharedOutputPath);
         } catch (Exception e) {
             log.error("Video composition failed for contentId: {}", contentId, e);
+            scopedProgressListener.onError(); // Notify the listener of failure
             throw new RuntimeException("Failed to compose final video", e);
         }
 
@@ -88,6 +97,7 @@ public class RedditStoryOrchestrator {
             destinationPath,
             userId
         );
+        scopedProgressListener.onComplete(); // Notify the listener of success
         return job;
     }
 }

@@ -82,5 +82,7 @@ public class AppProperties {
         private String generationResult;
         @NotEmpty
         private String generationRequestPrefix; // e.g., "request.generate."
+        @NotEmpty
+        private String contentStatus; // e.g., "content.status"
     }
 }

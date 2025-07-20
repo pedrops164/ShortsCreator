@@ -18,7 +18,7 @@ public interface ContentRepository extends ReactiveMongoRepository<Content, Stri
     Mono<Content> findByIdAndUserId(String id, String userId);
 
     // Custom query to find a specific content object by user id
-    Flux<Content> findByUserId(String userId);
+    Flux<Content> findByUserIdOrderByLastModifiedAtDesc(String userId);
 
-    Flux<Content> findByUserIdAndStatusIn(String userId, Collection<ContentStatus> statuses);
+    Flux<Content> findByUserIdAndStatusInOrderByLastModifiedAtDesc(String userId, Collection<ContentStatus> statuses);
 }

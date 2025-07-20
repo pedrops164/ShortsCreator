@@ -31,7 +31,6 @@ public class RabbitMqGenerationResultDispatcher implements GenerationResultDispa
             log.info("Successfully dispatched job for contentId: {}", generationResult.getContentId());
         } catch (Exception e) {
             log.error("Failed to dispatch video upload job for contentId: {}", generationResult.getContentId(), e);
-            // Depending on requirements, you might want to re-throw this as a custom exception
             throw new RuntimeException("Could not send message to RabbitMQ", e);
         }
     }

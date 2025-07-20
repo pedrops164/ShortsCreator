@@ -14,7 +14,10 @@ import com.shortscreator.shared.dto.OutputAssetsV1;
 import com.shortscreator.shared.dto.VideoUploadJobV1;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -110,11 +113,12 @@ public class ContentService {
     public Flux<Content> getUserContentByStatus(String userId, List<ContentStatus> statuses) {
     // If no statuses are provided, return all content for the user.
     // Otherwise, filter by the list of statuses.
+    log.info("Fetching content for user [{}] with statuses [{}]", userId, statuses);
     if (statuses == null || statuses.isEmpty()) {
-        return contentRepository.findByUserId(userId);
+        return contentRepository.findByUserIdOrderByLastModifiedAtDesc(userId);
     } else {
         // This requires a new method in your Spring Data repository interface
-        return contentRepository.findByUserIdAndStatusIn(userId, statuses);
+        return contentRepository.findByUserIdAndStatusInOrderByLastModifiedAtDesc(userId, statuses);
     }
 }
 
@@ -125,7 +129,7 @@ public class ContentService {
      */
     public Flux<Content> getUserContent(String userId) {
         log.info("Fetching all drafts for user [{}]", userId);
-        return contentRepository.findByUserId(userId);
+        return contentRepository.findByUserIdOrderByLastModifiedAtDesc(userId);
     }
 
     /**
@@ -241,5 +245,14 @@ public class ContentService {
      */
     private ContentType inferContentTypeFromTemplateId(String templateId) {
         return templateToContentTypeMap.get(templateId);
+    }
+
+    // New method to delete content
+    public Mono<Void> deleteContent(String contentId, String userId) {
+        // First, verify that the content exists and belongs to the user
+        return contentRepository.findByIdAndUserId(contentId, userId)
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Content not found or does not belong to user")))
+                .flatMap(content -> contentRepository.delete(content))
+                .then(); // Convert Mono<Content> from delete(content) to Mono<Void>
     }
 }

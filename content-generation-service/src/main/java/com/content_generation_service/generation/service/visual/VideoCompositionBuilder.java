@@ -11,6 +11,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * A builder for creating and executing complex FFmpeg video compositions.
@@ -27,6 +32,14 @@ public class VideoCompositionBuilder {
     
     private String lastVideoStreamTag = "[0:v]";
     private Integer narrationInputIndex = null;
+    private double outputDurationSeconds = -1.0; // To store the target output duration
+
+    // Progress listener
+    private ProgressListener progressListener;
+
+    // Pattern to extract time from FFmpeg progress output
+    private static final Pattern FFMPEG_TIME_PATTERN = Pattern.compile("time=(\\d{2}:\\d{2}:\\d{2}\\.\\d{2})");
+
 
     public VideoCompositionBuilder() {
         // Default output codecs
@@ -37,6 +50,12 @@ public class VideoCompositionBuilder {
         this.outputOptions.add("-c:a");
         this.outputOptions.add("aac");
         this.outputOptions.add("-y"); // Overwrite output file
+    }
+
+    // Setter for the progress listener
+    public VideoCompositionBuilder withProgressListener(ProgressListener listener) {
+        this.progressListener = listener;
+        return this;
     }
 
     public VideoCompositionBuilder withBackground(Path videoPath, int width, int height) {
@@ -139,6 +158,7 @@ public class VideoCompositionBuilder {
     }
 
     public VideoCompositionBuilder withOutputDuration(double durationSeconds) {
+        this.outputDurationSeconds = durationSeconds;
         int tIndex = this.outputOptions.indexOf("-t");
         if (tIndex != -1 && tIndex + 1 < this.outputOptions.size()) {
             this.outputOptions.remove(tIndex + 1);
@@ -213,13 +233,30 @@ public class VideoCompositionBuilder {
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         Process process = processBuilder.start();
 
+        // Use a single-threaded executor for reading stderr to avoid blocking the main thread
         StringBuilder errorOutput = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-            reader.lines()
-                .forEach(line -> {
-                    System.err.println("FFMPEG_DEBUG: " + line);
-                    errorOutput.append(line).append("\n");
-                });
+            String line;
+            while ((line = reader.readLine()) != null) {
+                //log.debug("FFMPEG: " + line);
+                errorOutput.append(line).append("\n");
+
+                // Parse progress
+                Matcher matcher = FFMPEG_TIME_PATTERN.matcher(line);
+                if (matcher.find()) {
+                    String timeString = matcher.group(1);
+                    double currentTimeSeconds = parseTimeToSeconds(timeString);
+                    
+                    // Calculate progress percentage
+                    if (outputDurationSeconds > 0 && progressListener != null) {
+                        double percentage = (currentTimeSeconds / outputDurationSeconds) * 100.0;
+                        percentage = Math.min(100.0, Math.max(0.0, percentage)); // Clamp between 0 and 100
+                        progressListener.onProgress(percentage);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            log.error("Error reading FFmpeg stderr: {}", e.getMessage(), e);
         }
 
         int exitCode = process.waitFor();
@@ -245,5 +282,19 @@ public class VideoCompositionBuilder {
 
     private String escapePathForFilter(String path) {
         return path.replace("\\", "/").replace(":", "\\:");
+    }
+
+    // Helper method to parse HH:MM:SS.ms to seconds
+    private double parseTimeToSeconds(String timeString) {
+        try {
+            String[] parts = timeString.split(":");
+            double hours = Double.parseDouble(parts[0]);
+            double minutes = Double.parseDouble(parts[1]);
+            double seconds = Double.parseDouble(parts[2]);
+            return (hours * 3600) + (minutes * 60) + seconds;
+        } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+            log.error("Failed to parse time string: {}", timeString, e);
+            return 0.0; // Return 0 or throw an exception based on desired error handling
+        }
     }
 }

@@ -1,16 +1,15 @@
-package com.content_storage_service.config;
+package com.notification_service.config;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
-import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.amqp.support.converter.MessageConverter;
-
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -44,21 +43,18 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public TopicExchange contentExchange() {
-        // 2. Use the getter from the properties class
+    Queue notificationsQueue() {
+        // durable: true, exclusive: false, autoDelete: false
+        return new Queue(appProperties.getRabbitmq().getQueues().getNotifications(), true);
+    }
+
+    @Bean
+    TopicExchange exchange() {
         return new TopicExchange(appProperties.getRabbitmq().getExchange());
     }
 
     @Bean
-    public Queue generationResultsQueue() {
-        return new Queue(appProperties.getRabbitmq().getQueues().getGenerationResults(), true);
-    }
-
-    @Bean
-    public Binding generationResultsBinding(Queue generationResultsQueue, TopicExchange contentExchange) {
-        // Bind to any message starting with "update.status."
-        return BindingBuilder.bind(generationResultsQueue)
-                            .to(contentExchange)
-                            .with(appProperties.getRabbitmq().getRoutingKeys().getGenerationResult()); 
+    Binding binding(Queue notificationsQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(notificationsQueue).to(exchange).with(appProperties.getRabbitmq().getRoutingKeys().getContentStatus());
     }
 }

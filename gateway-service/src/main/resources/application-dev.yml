@@ -26,6 +26,13 @@ spring:
                 # This predicate matches if the request path starts with /api/v1/content.
                 # The '/**' is a wildcard that matches any subpath.
                 - Path=/api/v1/content/**
+            - id: notification-service-route
+            
+              uri: http://localhost:8086
+
+              predicates:
+                # This predicate matches if the request path starts with /api/v1/notifications.
+                - Path=/api/v1/notifications/**
           globalcors:
             cors-configurations:
               '[/**]':

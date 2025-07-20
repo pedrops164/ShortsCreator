@@ -43,12 +43,11 @@ public class ContentController {
     }
 
     // Endpoint to get all content for the authenticated user
-    @GetMapping() // Path is now just /content
+    @GetMapping()
     @ResponseStatus(HttpStatus.OK)
     public Flux<Content> getUserContent(
             @RequestHeader("X-User-ID") String userId,
             @RequestParam(required = false) List<ContentStatus> statuses) {
-        // The old /jobs endpoint is no longer needed
         return contentService.getUserContentByStatus(userId, statuses);
     }
 
@@ -69,5 +68,14 @@ public class ContentController {
                 .onErrorResume(IllegalStateException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage())))
                 .onErrorResume(IllegalArgumentException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage())));
                 //.onErrorResume(e -> Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error submitting content for generation.", e)));
+    }
+
+    // New endpoint to delete content
+    @DeleteMapping("/{contentId}") // Path variable for the content ID
+    @ResponseStatus(HttpStatus.NO_CONTENT) // 204 No Content is standard for successful DELETE
+    public Mono<Void> deleteContent(
+            @PathVariable String contentId,
+            @RequestHeader("X-User-ID") String userId) {
+        return contentService.deleteContent(contentId, userId);
     }
 }

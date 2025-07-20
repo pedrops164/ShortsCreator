@@ -48,7 +48,6 @@ public class GenerationRequestListener {
                 // send job to CSS
                 generationResultDispatcher.dispatch(generationResult);
                 log.info("Successfully dispatched video upload job for contentId: {}", request.getContentId());
-
             } else {
                 throw new UnsupportedOperationException("Template ID not supported: " + request.getTemplateId());
             }
