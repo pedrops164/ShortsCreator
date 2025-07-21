@@ -92,8 +92,6 @@ export const authOptions: AuthOptions = {
       return refreshedToken;
     },
     async session({ session, token }: { session: Session; token: JWT; }): Promise<Session> {
-      // Send properties to the client, like an access_token from a provider.
-      session.accessToken = token.accessToken;
       session.error = token.error; // Pass potential error to the client
       return session;
     },

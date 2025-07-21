@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import './styles/globals.css';
-import { ThemeProvider } from './providers';
+import { ThemeProvider } from '@/components/layout/ThemeProvider';
 import SessionProvider from "@/components/layout/SessionProvider";
 import SessionChecker from '@/components/SessionChecker';
 

@@ -16,14 +16,14 @@ const contentTemplates = [
     id: 'another-template',
     title: 'Coming Soon',
     description: 'A new template will be available in the near future.',
-    videoSrc: '/videos/reddit-example.mp4', // Placeholder
-    createUrl: '#',
+    videoSrc: '/videos/test_reddit_story2.mp4', // Placeholder
+    createUrl: '/editor/create/reddit_story_v1',
   },
   {
     id: 'another-templatee',
     title: 'Coming Soon',
     description: 'A new template will be available in the near future.',
-    videoSrc: '/videos/reddit-example.mp4', // Placeholder
+    videoSrc: '/videos/test_reddit_story2.mp4', // Placeholder
     createUrl: '#',
   },
   // Add up to 4 templates to see the full row

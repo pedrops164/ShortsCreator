@@ -1,3 +1,4 @@
+import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
 import '../styles/globals.css';
 import NavBar from "@/components/layout/NavBar";
 
@@ -7,5 +8,11 @@ export default function MainAppLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <NavBar>{children}</NavBar>;
+  return (
+    <AuthenticatedLayout>
+      <NavBar>
+        {children}
+      </NavBar>
+    </AuthenticatedLayout>
+  );
 }

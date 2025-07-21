@@ -7,7 +7,7 @@ spring:
       resourceserver:
         jwt:
           # The gateway uses this to fetch the public keys required to verify the JWT signature.
-          issuer-uri: http://localhost:8080/realms/shorts-creator-realm
+          issuer-uri: ${KEYCLOAK_ISSUER}
 
   # --- Gateway Routing Configuration ---
   cloud:

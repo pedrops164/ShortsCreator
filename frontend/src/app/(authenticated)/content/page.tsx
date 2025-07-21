@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { FileDown, MoreVertical, RefreshCw, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { Draft } from '@/types/drafts'; // Import shared types
-import { ContentStatus } from '@/types/enums'; // Import shared enums
+import { ContentStatus } from '@/types/content'; // Import shared enums
 import { getDraftTitle } from '@/lib/helper'; // Import helper function
+import { useNotifications } from '@/context/NotificationContext'; // Import notifications hook
 
 // Helper to format date
 const formatDate = (isoString: string): string => {
@@ -16,9 +17,9 @@ const formatDate = (isoString: string): string => {
 // --- Sub-Components ---
 
 // Status Badge Component - Now uses the shared ContentStatus type
-const StatusBadge = ({ status }: { status: ContentStatus }) => {
+const StatusBadge = ({ status, progress }: { status: ContentStatus; progress?: number }) => {
+  const isProcessing = status === ContentStatus.PROCESSING;
   const statusStyles = {
-    // Keys are now uppercase to match the backend enum
     COMPLETED: {
       bgColor: 'bg-green-500/10',
       textColor: 'text-green-400',
@@ -31,13 +32,13 @@ const StatusBadge = ({ status }: { status: ContentStatus }) => {
       icon: <RefreshCw className="w-4 h-4 animate-spin" />,
       text: 'Processing',
     },
-    FAILED: { // Assuming 'Error' status is 'FAILED' in the backend
+    FAILED: {
       bgColor: 'bg-red-500/10',
       textColor: 'text-red-400',
       icon: <XCircle className="w-4 h-4" />,
       text: 'Error',
     },
-    DRAFT: { // Added for completeness
+    DRAFT: { 
       bgColor: 'bg-yellow-500/10',
       textColor: 'text-yellow-400',
       icon: <CheckCircle className="w-4 h-4" />,
@@ -51,6 +52,9 @@ const StatusBadge = ({ status }: { status: ContentStatus }) => {
     <div className={`inline-flex items-center gap-x-2 px-3 py-1 rounded-full text-sm font-medium ${style.bgColor} ${style.textColor}`}>
       {style.icon}
       <span>{style.text}</span>
+      {isProcessing && typeof progress === 'number' && (
+        <span className="font-mono text-xs opacity-80">({progress.toFixed(0)}%)</span>
+      )}
     </div>
   );
 };
@@ -73,7 +77,7 @@ const ContentCard = ({ content }: { content: Draft }) => {
             <p><span className="font-medium text-foreground/80">Created:</span> {formatDate(content.createdAt)}</p>
         </div>
         <div className="flex justify-between items-center pt-2">
-            <StatusBadge status={content.status} />
+            <StatusBadge status={content.status} progress={content.progressPercentage} />
             {content.status === 'COMPLETED' && (
                 <button className="flex items-center gap-2 bg-primary text-white font-bold py-2 px-4 rounded-md hover:bg-primary/90 transition-colors">
                     <FileDown size={18} />
@@ -88,12 +92,13 @@ const ContentCard = ({ content }: { content: Draft }) => {
 
 // --- Main Content Page Component ---
 export default function ContentPage() {
-  // 1. Remove mock data, use state for real data
   const [contents, setContents] = useState<Draft[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // 2. Add useEffect to fetch data from the API
+  const { latestVideoStatus } = useNotifications();
+
+  // useEffect to fetch data from the API
   useEffect(() => {
     const statusesToFetch = ['PROCESSING', 'COMPLETED', 'FAILED'];
     const fetchContent = async () => {
@@ -113,12 +118,31 @@ export default function ContentPage() {
     fetchContent();
   }, []);
 
+  // useEffect to handle incoming notifications
+  useEffect(() => {
+    if (latestVideoStatus) {
+      setContents(prevContents =>
+        prevContents.map(content => {
+          if (content.id === latestVideoStatus.contentId) {
+            // Update the specific item with new status and progress
+            return {
+              ...content,
+              status: latestVideoStatus.status,
+              progressPercentage: latestVideoStatus.progressPercentage,
+            };
+          }
+          return content;
+        })
+      );
+    }
+  }, [latestVideoStatus]); // This effect runs whenever a new notification arrives
+
+
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = contents.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(contents.length / itemsPerPage);
-
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   return (
@@ -152,7 +176,7 @@ export default function ContentPage() {
                     <td className="p-4 text-accent">{content.contentType}</td>
                     <td className="p-4 text-accent">{formatDate(content.createdAt)}</td>
                     <td className="p-4">
-                      <StatusBadge status={content.status} />
+                      <StatusBadge status={content.status} progress={content.progressPercentage} />
                     </td>
                     <td className="p-4 text-center">
                       {content.status === 'COMPLETED' && (
