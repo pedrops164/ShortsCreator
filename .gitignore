@@ -39,9 +39,9 @@ build/
 .vscode/
 
 # Environment files
-.env
+**/.env
 application.properties
 application.yml
-.env.dev
-.env.prod
+**/.env.dev
+**/.env.prod
 
