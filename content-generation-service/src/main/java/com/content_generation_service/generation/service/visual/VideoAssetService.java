@@ -44,4 +44,23 @@ public class VideoAssetService {
             throw new IOException("Invalid URI for background video: " + resourceUrl, e);
         }
     }
+
+    public Path getCharacterImage(String characterId) throws IOException {
+        log.info("Fetching character image for characterId: {}", characterId);
+
+        String resourcePath = "assets/characters/" + characterId + ".png";
+        URL resourceUrl = this.getClass().getClassLoader().getResource(resourcePath);
+
+        if (resourceUrl == null) {
+            throw new IOException("Character image not found in resources: " + resourcePath);
+        }
+
+        log.debug("Resolved character image URL: {}", resourceUrl);
+
+        try {
+            return Paths.get(resourceUrl.toURI());
+        } catch (URISyntaxException e) {
+            throw new IOException("Invalid URI for character image: " + resourceUrl, e);
+        }
+    }
 }

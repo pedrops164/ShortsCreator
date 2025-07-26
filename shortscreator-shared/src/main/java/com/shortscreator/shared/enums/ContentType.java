@@ -5,6 +5,6 @@ package com.shortscreator.shared.enums;
  */
 public enum ContentType {
     REDDIT_STORY,
-    ITALIAN_BRAINROT,
-    PETER_EXPLAINS_STUFF
+    CHARACTER_EXPLAINS,
+    ITALIAN_BRAINROT
 }

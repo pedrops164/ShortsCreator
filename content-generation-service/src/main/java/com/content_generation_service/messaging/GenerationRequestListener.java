@@ -11,6 +11,7 @@ import com.shortscreator.shared.dto.GenerationResultV1;
 import com.shortscreator.shared.dto.VideoUploadJobV1;
 import com.shortscreator.shared.enums.ContentStatus;
 import com.shortscreator.shared.validation.TemplateValidator;
+import com.content_generation_service.generation.orchestrator.CharacterExplainsOrchestrator;
 import com.content_generation_service.generation.orchestrator.RedditStoryOrchestrator;
 
 @Slf4j
@@ -23,6 +24,7 @@ public class GenerationRequestListener {
 
     private final TemplateValidator templateValidator; // Inject validator bean
     private final RedditStoryOrchestrator redditStoryOrchestrator; // Inject orchestrator bean
+    private final CharacterExplainsOrchestrator characterExplainsOrchestrator;
 
     // Note: You must configure a MessageConverter bean that uses Jackson for this to work with JsonNode out-of-the-box.
     // Spring Boot's auto-configuration for AMQP usually does this if Jackson is on the classpath.
@@ -39,6 +41,18 @@ public class GenerationRequestListener {
                 
                 // The orchestrator does all the heavy lifting
                 VideoUploadJobV1 job = redditStoryOrchestrator.generate(request.getTemplateParams(), request.getContentId(), request.getUserId());
+                GenerationResultV1 generationResult = new GenerationResultV1(
+                    request.getContentId(),
+                    ContentStatus.COMPLETED,
+                    job,
+                    null // No error message since this is a successful job
+                );
+                // send job to CSS
+                generationResultDispatcher.dispatch(generationResult);
+                log.info("Successfully dispatched video upload job for contentId: {}", request.getContentId());
+            } else if (CharacterExplainsOrchestrator.CHARACTER_EXPLAINS_TEMPLATE_ID.equals(request.getTemplateId())) {
+                // Handle the "Character Explains" template
+                VideoUploadJobV1 job = characterExplainsOrchestrator.generate(request.getTemplateParams(), request.getContentId(), request.getUserId());
                 GenerationResultV1 generationResult = new GenerationResultV1(
                     request.getContentId(),
                     ContentStatus.COMPLETED,

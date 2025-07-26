@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Character Explains Stuff Template Parameters",
+  "description": "Schema to validate the parameters for generating a 'Character Explains Stuff' video.",
+  "type": "object",
+  "properties": {
+    "characterPresetId": {
+        "type": "string",
+        "description": "ID for the character pack (images, default voices).",
+        "enum": ["peter_stewie", "rick_morty", "spongebob_patrick"]
+    },
+    "topicTitle": {
+        "type": "string",
+        "description": "The main topic or title of the explanation.",
+        "minLength": 1
+    },
+    "dialogue": {
+        "type": "array",
+        "description": "Ordered list of dialogue lines.",
+        "minItems": 1,
+        "items": {
+            "type": "object",
+            "required": ["characterId", "text"],
+            "properties": {
+                "characterId": {
+                    "type": "string",
+                    "description": "ID of the speaking character from the preset.",
+                    "minLength": 1
+                },
+                "text": {
+                    "type": "string",
+                    "description": "The dialogue text for the character to speak.",
+                    "minLength": 1
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "backgroundVideoId": {
+        "type": "string",
+        "description": "ID of the selected background video.",
+        "enum": ["minecraft1", "gta1"]
+    },
+    "characterLayout": {
+        "type": "string",
+        "description": "On-screen positioning of character images.",
+        "enum": ["bottom_corners"],
+        "default": "bottom_corners"
+    },
+    "aspectRatio": {
+        "type": "string",
+        "description": "Aspect ratio for the video.",
+        "enum": ["9:16"],
+        "default": "9:16"
+    },
+    "subtitles": {
+        "type": "object",
+        "description": "Container for all subtitle-related settings.",
+        "properties": {
+          "show": {
+              "type": "boolean",
+              "description": "Whether subtitles should be shown."
+          },
+          "color": {
+              "type": "string",
+              "description": "Color of the subtitles (hex code).",
+              "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+          },
+          "font": {
+              "type": "string",
+              "description": "Font of the subtitles.",
+              "minLength": 1
+          },
+          "position": {
+              "type": "string",
+              "description": "Position of the subtitles.",
+              "enum": ["bottom", "center"],
+              "default": "bottom"
+          }
+        },
+        "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
