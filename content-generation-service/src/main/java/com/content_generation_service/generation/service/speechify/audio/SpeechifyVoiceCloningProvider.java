@@ -2,9 +2,10 @@ package com.content_generation_service.generation.service.speechify.audio;
 
 import com.content_generation_service.config.AppProperties;
 import com.content_generation_service.generation.model.NarrationSegment;
+import com.content_generation_service.generation.model.WordTiming;
 import com.content_generation_service.generation.service.audio.TextToSpeechProvider;
-import com.content_generation_service.generation.service.audio.TranscriptionProvider;
 import com.content_generation_service.generation.service.speechify.dto.SpeechifyAudioResponse;
+import com.content_generation_service.generation.service.speechify.dto.SpeechifyAudioResponse.SpeechMarks;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,9 @@ import reactor.core.publisher.Mono;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -23,17 +26,14 @@ public class SpeechifyVoiceCloningProvider implements TextToSpeechProvider {
 
     private final WebClient webClient;
     private final String apiKey;
-    private final TranscriptionProvider transcriptionProvider;
     private final Map<String, String> voiceMapping;
 
     public SpeechifyVoiceCloningProvider(
             WebClient.Builder webClientBuilder,
-            AppProperties appProperties,
-            TranscriptionProvider transcriptionProvider) {
+            AppProperties appProperties) {
 
         this.webClient = webClientBuilder.baseUrl("https://api.sws.speechify.com/v1").build();
         this.apiKey = appProperties.getTts().getSpeechify().getApiKey();
-        this.transcriptionProvider = transcriptionProvider;
         this.voiceMapping = appProperties.getTts().getSpeechify().getVoiceMapping();
 
         if (apiKey == null || apiKey.isBlank()) {
@@ -57,18 +57,16 @@ public class SpeechifyVoiceCloningProvider implements TextToSpeechProvider {
         }
 
         // The logic becomes a simple chain.
-        return createAudioFile(text, speechifyVoiceId)
-                .flatMap(outputFile -> transcriptionProvider.getNarrationSegmentFromAudioFile(outputFile, generateTimings));
+        return createNarrationSegment(text, speechifyVoiceId);
     }
 
     /**
      * Calls the Speechify API to generate audio using a pre-registered voice ID.
      * @param text The text to synthesize.
      * @param speechifyVoiceId The actual voice ID from Speechify.
-     * @return A Mono emitting the Path to the temporary output audio file.
+     * @return A Mono emitting the NarrationSegment output of generating the audio.
      */
-    private Mono<Path> createAudioFile(String text, String speechifyVoiceId) {
-
+    private Mono<NarrationSegment> createNarrationSegment(String text, String speechifyVoiceId) {
         Map<String, Object> requestBody = Map.of(
             "input", text,
             "voice_id", speechifyVoiceId,
@@ -100,7 +98,21 @@ public class SpeechifyVoiceCloningProvider implements TextToSpeechProvider {
                     Files.write(tempOutputFile, audioBytes);
                     
                     log.debug("Successfully decoded and wrote Speechify audio to temporary file: {}", tempOutputFile);
-                    return Mono.just(tempOutputFile);
+
+                    List<WordTiming> wordTimings = new ArrayList<>();
+                    SpeechMarks speechMarks = response.getSpeechMarks();
+                    double duration = (speechMarks.getEnd_time() - speechMarks.getStart_time()) / 1000.0; // Convert milliseconds to seconds
+                    if (!speechMarks.getChunks().isEmpty()) {
+                        // Process speech marks if available
+                        List<SpeechifyAudioResponse.SpeechMark> speechMarkChunks = speechMarks.getChunks();
+                        for (SpeechifyAudioResponse.SpeechMark mark : speechMarkChunks) {
+                            log.debug("Word: {}, Start: {}, End: {}", mark.getValue(), mark.getStart_time(), mark.getEnd_time());
+                            // Convert milliseconds to seconds for WordTiming
+                            wordTimings.add(new WordTiming(mark.getValue(), mark.getStart_time() / 1000.0, mark.getEnd_time() / 1000.0));
+                        }
+                    }
+                    NarrationSegment narrationSegment = new NarrationSegment(tempOutputFile, duration, wordTimings);
+                    return Mono.just(narrationSegment);
                 } catch (IOException e) {
                     log.error("Failed to write decoded audio to file", e);
                     return Mono.error(e);

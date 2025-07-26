@@ -17,6 +17,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.awt.Dimension;
 
 /**
  * Provides generic, reusable image manipulation utilities using Java's AWT.
@@ -26,6 +27,25 @@ import java.util.List;
 @Slf4j
 @Service
 public class ImageUtilitiesService {
+
+    /**
+     * Reads an image file and returns its dimensions.
+     * @param imagePath The path to the image file.
+     * @return A Dimension object containing the width and height.
+     * @throws IOException if the file cannot be read or is not a valid image.
+     */
+    public Dimension getImageDimensions(Path imagePath) throws IOException {
+        try {
+            BufferedImage image = ImageIO.read(imagePath.toFile());
+            if (image == null) {
+                throw new IOException("Could not read image file or format is not supported: " + imagePath);
+            }
+            return new Dimension(image.getWidth(), image.getHeight());
+        } catch (IOException e) {
+            log.error("Failed to get dimensions for image: {}", imagePath, e);
+            throw e;
+        }
+    }
 
     /**
      * Loads an image from the application's resources folder.

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.UUID;
+import java.awt.Dimension;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import com.content_generation_service.generation.model.DialogueLineInfo;
 import com.content_generation_service.generation.model.NarrationSegment;
 import com.content_generation_service.generation.service.audio.AudioService;
 import com.content_generation_service.generation.service.speechify.audio.SpeechifyVoiceCloningProvider;
+import com.content_generation_service.generation.service.visual.ImageUtilitiesService;
 import com.content_generation_service.generation.service.visual.ProgressListener;
 import com.content_generation_service.generation.service.visual.SubtitleService;
 import com.content_generation_service.generation.service.visual.VideoAssetService;
@@ -45,6 +47,7 @@ public class CharacterExplainsOrchestrator {
     private final SubtitleService subtitleService;
     private final VideoStatusUpdateDispatcher videoStatusUpdateDispatcher;
     private final AudioService audioService;
+    private final ImageUtilitiesService imageUtilitiesService;
 
     // Use a clear property for the shared temporary path
     @Value("${app.storage.shared-temp.base-path}")
@@ -74,7 +77,7 @@ public class CharacterExplainsOrchestrator {
             Path backgroundVideo = videoAssetService.getBackgroundVideo(params.get("backgroundVideoId").asText());
 
             // Parse preset and get images for the characters involved
-            /* String presetId = params.get("characterPresetId").asText(); // e.g., "peter_stewie"
+            String presetId = params.get("characterPresetId").asText(); // e.g., "peter_stewie"
             Map<String, Path> characterImageMap = Arrays.stream(presetId.split("_"))
                     .collect(Collectors.toMap(
                             characterId -> characterId,
@@ -86,7 +89,7 @@ public class CharacterExplainsOrchestrator {
                                     throw new RuntimeException("Error fetching character image", e);
                                 }
                             }
-                    )); */
+                    ));
 
             // Extract styling parameters from the JsonNode
             JsonNode subtitles = params.get("subtitles");
@@ -97,12 +100,45 @@ public class CharacterExplainsOrchestrator {
             Path subtitleFile = subtitleService.createAssFile(narration.getWordTimings(), font, color, position);
 
             // Combine everything into a final video composition
-            VideoCompositionBuilder compositionBuilder = new VideoCompositionBuilder();
-            finalVideoPath = compositionBuilder
-                .withBackground(backgroundVideo, 1080, 1920)
+            VideoCompositionBuilder compositionBuilder = new VideoCompositionBuilder(1080, 1920)
+                .withBackground(backgroundVideo)
                 .withNarration(narration.getAudioFilePath())
-                .withSubtitles(subtitleFile)
-                .withProgressListener(scopedProgressListener)
+                .withProgressListener(scopedProgressListener);
+
+            // Determine character order dynamically
+            List<String> characterOrder = narration.getDialogueTimings().stream()
+                    .map(DialogueLineInfo::getCharacterId)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            int margin = 0; // Margin from the bottom of the video
+            for (DialogueLineInfo line : narration.getDialogueTimings()) {
+                String characterId = line.getCharacterId();
+                Path characterImage = characterImageMap.get(characterId);
+                
+                // Get image dimensions using the new service
+                Dimension imgDimensions = imageUtilitiesService.getImageDimensions(characterImage);
+
+                // Determine position based on order of appearance, not hardcoded names
+                int characterIndex = characterOrder.indexOf(characterId);
+                boolean isLeft = (characterIndex == 0);
+
+                // Calculate coordinates using the builder's dimensions
+                int y = compositionBuilder.getHeight() - imgDimensions.height - margin;
+                int x = isLeft ? margin : compositionBuilder.getWidth() - imgDimensions.width - margin;
+
+                compositionBuilder.withImageOverlay(
+                    characterImage, 
+                    x, 
+                    y, 
+                    line.getStartTime(), 
+                    line.getDuration(),
+                    false
+                );
+            }
+
+            finalVideoPath = compositionBuilder
+                .withSubtitles(subtitleFile) // Add subtitles to the composition only after the image overlays
                 .buildAndExecute(sharedOutputPath);
         } catch (Exception e) {
             log.error("Video composition failed for contentId: {}", contentId, e);

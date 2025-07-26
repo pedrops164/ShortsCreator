@@ -89,7 +89,7 @@ public class OpenAiTranscriptionProvider implements TranscriptionProvider {
         if (generateTimings) {
             timingsMono = getWordTimings(audioFile)
                 .map(timings -> {
-                    // Your existing logic to trim the last word timing
+                    // trim the last word timing
                     if (!timings.isEmpty()) {
                         WordTiming lastTiming = timings.get(timings.size() - 1);
                         if (lastTiming.getEndTimeSeconds() > realDuration) {

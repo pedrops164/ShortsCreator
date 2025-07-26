@@ -85,11 +85,11 @@ public class RedditStoryOrchestrator {
             Path subtitleFile = subtitleService.createAssFile(narration.getWordTimings(), font, color, position);
 
             // Combine everything into a final video composition
-            VideoCompositionBuilder compositionBuilder = new VideoCompositionBuilder();
+            VideoCompositionBuilder compositionBuilder = new VideoCompositionBuilder(1080, 1920);
             finalVideoPath = compositionBuilder
-                .withBackground(backgroundVideo, 1080, 1920) // Assuming 9:16 aspect ratio
+                .withBackground(backgroundVideo) // Assuming 9:16 aspect ratio
                 .withNarration(narration.getAudioFilePath())
-                .withOverlay(titleImage, narration.getTitleDurationSeconds(), false)
+                .withCenteredOverlay(titleImage, 0, narration.getTitleDurationSeconds(), false)
                 .withSubtitles(subtitleFile)
                 .withOutputDuration(narration.getDurationSeconds())
                 .withProgressListener(scopedProgressListener) // Pass the scoped listener

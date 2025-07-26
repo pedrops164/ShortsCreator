@@ -34,6 +34,9 @@ public class VideoCompositionBuilder {
     private Integer narrationInputIndex = null;
     private double outputDurationSeconds = -1.0; // To store the target output duration
 
+    private final int height;
+    private final int width;
+
     // Progress listener
     private ProgressListener progressListener;
 
@@ -41,7 +44,7 @@ public class VideoCompositionBuilder {
     private static final Pattern FFMPEG_TIME_PATTERN = Pattern.compile("time=(\\d{2}:\\d{2}:\\d{2}\\.\\d{2})");
 
 
-    public VideoCompositionBuilder() {
+    public VideoCompositionBuilder(int width, int height) {
         // Default output codecs
         this.outputOptions.add("-c:v");
         this.outputOptions.add("libx264");
@@ -50,6 +53,9 @@ public class VideoCompositionBuilder {
         this.outputOptions.add("-c:a");
         this.outputOptions.add("aac");
         this.outputOptions.add("-y"); // Overwrite output file
+
+        this.height = height;
+        this.width = width;
     }
 
     // Setter for the progress listener
@@ -58,7 +64,7 @@ public class VideoCompositionBuilder {
         return this;
     }
 
-    public VideoCompositionBuilder withBackground(Path videoPath, int width, int height) {
+    public VideoCompositionBuilder withBackground(Path videoPath) {
         this.inputs.add(videoPath);
         String filter = String.format(Locale.US, "[0:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1[bg]",
                 width, height, width, height);
@@ -127,6 +133,79 @@ public class VideoCompositionBuilder {
         return this;
     }
 
+    /**
+     * Generic method to add any image overlay.
+     *
+     * @param imagePath     Path to the image file.
+     * @param x             The x-coordinate for the top-left corner of the overlay.
+     * @param y             The y-coordinate for the top-left corner of the overlay.
+     * @param startTime     The time in seconds when the overlay should appear.
+     * @param duration      The duration in seconds the overlay should be visible.
+     * @param scaleToFit    If true, scales the image to the video's width.
+     */
+    public VideoCompositionBuilder withImageOverlay(Path imagePath, int x, int y, double startTime, double duration, boolean scaleToFit) {
+        int imageInputIndex = this.inputs.size();
+        this.inputs.add(imagePath);
+        
+        String imageStreamTag = "[" + imageInputIndex + ":v]";
+        String streamToOverlayTag = imageStreamTag;
+
+        if (scaleToFit) {
+            log.debug("Scaling overlay image to fit video width.");
+            String scaledImageTag = "[scaled_img" + imageInputIndex + "]";
+            // Use -2 to maintain aspect ratio when scaling to a fixed width
+            String scaleFilter = String.format(Locale.US, "%sscale=%d:-2%s", imageStreamTag, this.width, scaledImageTag);
+            this.filterComplexParts.add(scaleFilter);
+            streamToOverlayTag = scaledImageTag;
+        }
+
+        String currentVideoTag = this.lastVideoStreamTag;
+        String overlayTag = "[ovr" + imageInputIndex + "]";
+        double endTime = startTime + duration;
+
+        // The FFmpeg filter now uses the x, y, startTime, and endTime parameters
+        String overlayFilter = String.format(Locale.US, "%s%soverlay=%d:%d:enable='between(t,%.2f,%.2f)'%s",
+                currentVideoTag, streamToOverlayTag, x, y, startTime, endTime, overlayTag);
+        
+        this.filterComplexParts.add(overlayFilter);
+        this.lastVideoStreamTag = overlayTag;
+        return this;
+    }
+
+    /**
+     * A convenience method for the common use case of adding a centered overlay.
+     * It calls the more generic withImageOverlay method internally.
+     */
+    public VideoCompositionBuilder withCenteredOverlay(Path imagePath, double startTime, double duration, boolean scaleToFit) {
+        // FFmpeg's overlay filter can center automatically using these expressions for x and y
+        String xExpression = "(W-w)/2";
+        String yExpression = "(H-h)/2";
+        
+        // This logic is now almost identical to the generic one, just with different x/y values.
+        int imageInputIndex = this.inputs.size();
+        this.inputs.add(imagePath);
+        String imageStreamTag = "[" + imageInputIndex + ":v]";
+        String streamToOverlayTag = imageStreamTag;
+
+        if (scaleToFit) {
+            String scaledImageTag = "[scaled_img" + imageInputIndex + "]";
+            String scaleFilter = String.format(Locale.US, "%sscale=%d:-2%s", imageStreamTag, this.width, scaledImageTag);
+            this.filterComplexParts.add(scaleFilter);
+            streamToOverlayTag = scaledImageTag;
+        }
+
+        String currentVideoTag = this.lastVideoStreamTag;
+        String overlayTag = "[ovr_centered" + imageInputIndex + "]";
+        double endTime = startTime + duration;
+
+        String overlayFilter = String.format(Locale.US, "%s%soverlay=%s:%s:enable='between(t,%.2f,%.2f)'%s",
+                currentVideoTag, streamToOverlayTag, xExpression, yExpression, startTime, endTime, overlayTag);
+
+        this.filterComplexParts.add(overlayFilter);
+        this.lastVideoStreamTag = overlayTag;
+        return this;
+    }
+
     public VideoCompositionBuilder withSubtitles(Path subtitlePath) {
         if (filterComplexParts.isEmpty()) {
             throw new IllegalStateException("Subtitles can only be added after a video stream has been defined.");
@@ -134,24 +213,18 @@ public class VideoCompositionBuilder {
         this.tempFilesToClean.add(subtitlePath);
         String escapedPath = escapePathForFilter(subtitlePath.toAbsolutePath().toString());
 
-        // FIX: Chain the 'ass' filter to the previous filter using a comma for robustness.
-        // This modifies the last added filter string in the list.
-        String lastFilter = filterComplexParts.remove(filterComplexParts.size() - 1);
+        // Get the video stream tag from the LAST operation (which includes all overlays)
+        String currentVideoTag = this.lastVideoStreamTag;
+        String newOutputTag = "[v_with_subs]"; // A new, final tag for the video stream
+
+        // Create a new, separate filter for the subtitles
+        String subtitleFilter = String.format(Locale.US, "%sass=filename='%s'%s",
+                currentVideoTag, escapedPath, newOutputTag);
+
+        // Add this filter as the NEW last step in the chain
+        this.filterComplexParts.add(subtitleFilter);
         
-        // Remove the old output tag (e.g., "[ovr2]") from the end of the last filter
-        int lastBracket = lastFilter.lastIndexOf('[');
-        if (lastBracket == -1) {
-            throw new IllegalStateException("The last filter is missing a valid output tag.");
-        }
-        String lastFilterWithoutOutput = lastFilter.substring(0, lastBracket);
-
-        // Create the new chained filter
-        String newOutputTag = "[v_sub]";
-        String newChainedFilter = String.format(Locale.US, "%s,ass=filename='%s'%s",
-                lastFilterWithoutOutput, escapedPath, newOutputTag);
-
-        // Add the new, extended filter back to the list
-        filterComplexParts.add(newChainedFilter);
+        // Update the final video tag to point to the stream with subtitles
         this.lastVideoStreamTag = newOutputTag;
         
         return this;
@@ -296,5 +369,13 @@ public class VideoCompositionBuilder {
             log.error("Failed to parse time string: {}", timeString, e);
             return 0.0; // Return 0 or throw an exception based on desired error handling
         }
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
+    public int getWidth() {
+        return width;
     }
 }
