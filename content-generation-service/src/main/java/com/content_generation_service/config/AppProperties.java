@@ -1,6 +1,9 @@
 package com.content_generation_service.config;
 
 import lombok.Data;
+
+import java.util.Map;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
@@ -24,27 +27,6 @@ public class AppProperties {
     @Valid
     @NotNull
     private Transcription transcription = new Transcription();
-/* 
-    @Valid
-    @NotNull
-    private Storage storage = new Storage();
-
-    @Valid
-    @NotNull
-    private Queues queues = new Queues();
-
-    @Data
-    public static class Storage {
-        @Valid
-        @NotNull
-        private Efs efs = new Efs();
-    }
-
-    @Data
-    public static class Efs {
-        @NotEmpty
-        private String basePath; // e.g., "temp/efs-shared"
-    } */
     
     @Data
     public static class Transcription {
@@ -55,11 +37,32 @@ public class AppProperties {
     @Data
     public static class Tts {
         private Openai openai = new Openai();
+        private Elevenlabs elevenlabs = new Elevenlabs();
+        private Speechify speechify = new Speechify();
+    }
+
+    @Data
+    public static class SpeechifyVoiceMapping {
+        private String rick;
+        private String morty;
+        private String peter;
+        private String stewie; // Optional, can be null if not set
     }
     
     @Data
     public static class Openai {
         private String apiKey;
+    }
+    @Data
+    public static class Elevenlabs {
+        private String apiKey;
+    }
+
+    @Data
+    public static class Speechify {
+        private String apiKey;
+        // Spring Boot automatically populates this map from application.yml
+        private Map<String, String> voiceMapping;
     }
 
     @Data
