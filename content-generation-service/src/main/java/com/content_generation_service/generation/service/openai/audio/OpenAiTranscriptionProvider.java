@@ -1,6 +1,7 @@
 package com.content_generation_service.generation.service.openai.audio;
 
 import com.content_generation_service.config.AppProperties;
+import com.content_generation_service.generation.model.NarrationSegment;
 import com.content_generation_service.generation.model.WordTiming;
 import com.content_generation_service.generation.service.audio.TranscriptionProvider;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -19,7 +20,10 @@ import reactor.netty.http.client.HttpClient;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+
+import com.content_generation_service.generation.service.audio.AudioService;
 
 /**
  * Concrete implementation of a TranscriptionProvider using OpenAI's Whisper API.
@@ -32,9 +36,11 @@ public class OpenAiTranscriptionProvider implements TranscriptionProvider {
 
     private final WebClient webClient;
     private final String apiKey;
+    private final AudioService audioService;
 
-    public OpenAiTranscriptionProvider(WebClient.Builder webClientBuilder, AppProperties appProperties) {
+    public OpenAiTranscriptionProvider(WebClient.Builder webClientBuilder, AppProperties appProperties, AudioService audioService) {
         // The transcription API can take a while, so we increase the timeout.
+        this.audioService = audioService;
         HttpClient httpClient = HttpClient.create().responseTimeout(Duration.ofMinutes(2));
         this.webClient = webClientBuilder
                 .baseUrl("https://api.openai.com/v1/audio")
@@ -71,6 +77,32 @@ public class OpenAiTranscriptionProvider implements TranscriptionProvider {
                 .bodyToMono(JsonNode.class)
                 .map(this::parseTimingsFromResponse)
                 .doOnError(e -> log.error("Failed during OpenAI transcription API call for file {}", audioFilePath, e));
+    }
+
+    /**
+     * Processes a fully downloaded audio file to extract duration and word timings.
+     */
+    public Mono<NarrationSegment> getNarrationSegmentFromAudioFile(Path audioFile, boolean generateTimings) {
+        double realDuration = audioService.getAudioDuration(audioFile);
+
+        Mono<List<WordTiming>> timingsMono;
+        if (generateTimings) {
+            timingsMono = getWordTimings(audioFile)
+                .map(timings -> {
+                    // Your existing logic to trim the last word timing
+                    if (!timings.isEmpty()) {
+                        WordTiming lastTiming = timings.get(timings.size() - 1);
+                        if (lastTiming.getEndTimeSeconds() > realDuration) {
+                            lastTiming.setEndTimeSeconds(realDuration);
+                        }
+                    }
+                    return timings;
+                });
+        } else {
+            timingsMono = Mono.just(Collections.emptyList());
+        }
+
+        return timingsMono.map(timings -> new NarrationSegment(audioFile, realDuration, timings));
     }
 
     /**

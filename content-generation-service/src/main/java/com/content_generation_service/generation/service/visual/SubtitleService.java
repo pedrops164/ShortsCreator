@@ -28,13 +28,8 @@ public class SubtitleService {
      * @param styleParams A JsonNode containing subtitle styling info (font, color, position).
      * @return The path to the generated .ass file.
      */
-    public Path createAssFile(List<WordTiming> wordTimings, JsonNode styleParams) {
+    public Path createAssFile(List<WordTiming> wordTimings, String font, String color, String position) {
         log.info("Generating styled .ass subtitle file.");
-
-        // Extract styling parameters from the JsonNode
-        String font = styleParams.get("subtitlesFont").asText("Arial");
-        String color = styleParams.get("subtitlesColor").asText("#FFFFFF");
-        String position = styleParams.get("subtitlesPosition").asText("bottom");
 
         // Build the .ass file content
         StringBuilder assContent = new StringBuilder();

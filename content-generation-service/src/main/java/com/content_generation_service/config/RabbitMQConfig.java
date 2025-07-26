@@ -58,8 +58,9 @@ public class RabbitMQConfig {
     public Binding redditStoryBinding(Queue generationRequestQueue, TopicExchange contentExchange) {
         final String generationRequestPrefix = appProperties.getRabbitmq().getRoutingKeys().getGenerationRequestPrefix();
         // Bind the queue to the exchange for the specific templateId we support
+        // Use '#' wildcard to match any routing key that starts with the generationRequestPrefix.
         return BindingBuilder.bind(generationRequestQueue)
                              .to(contentExchange)
-                             .with(generationRequestPrefix + "reddit_story_v1");
+                             .with(generationRequestPrefix + "#");
     }
 }

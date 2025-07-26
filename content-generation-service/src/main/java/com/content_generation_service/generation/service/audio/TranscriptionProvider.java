@@ -1,5 +1,6 @@
 package com.content_generation_service.generation.service.audio;
 
+import com.content_generation_service.generation.model.NarrationSegment;
 import com.content_generation_service.generation.model.WordTiming;
 import reactor.core.publisher.Mono;
 
@@ -19,6 +20,12 @@ public interface TranscriptionProvider {
      * @return A Mono emitting a list of WordTiming objects.
      */
     Mono<List<WordTiming>> getWordTimings(Path audioFilePath);
+
+
+    /**
+     * Processes a fully downloaded audio file to extract duration and word timings.
+     */
+    Mono<NarrationSegment> getNarrationSegmentFromAudioFile(Path audioFile, boolean generateTimings);
 
     /**
      * Indicates which provider this implementation represents (e.g., "openai").
