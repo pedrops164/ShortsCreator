@@ -11,10 +11,12 @@ export type RedditStoryParams = {
     text: string; // Required by schema
   }>;
   aspectRatio?: '9:16'; // Not required by schema
-  showSubtitles?: boolean; // Not required by schema
-  subtitlesColor?: string; // String with hex pattern - TypeScript string is sufficient
-  subtitlesFont?: string; // Not required by schema
-  subtitlesPosition?: 'bottom' | 'center' | 'top'; // Not required by schema
+  subtitles?: {
+    show?: boolean; // Optional, has a default
+    color?: string; // Optional, has a default
+    font?: string; // Optional, has a default
+    position?: 'bottom' | 'center'; // Optional, has a default
+  };
   voiceSelection?: 'openai_alloy' | 'openai_ash' | 'openai_ballad' | 'openai_coral' | 'openai_echo' | 'openai_fable' | 'openai_onyx' | 'openai_nova' | 'openai_sage' | 'openai_shimmer' | 'openai_verse'; // Not required by schema
   theme?: 'dark' | 'light'; // Not required by schema
 };

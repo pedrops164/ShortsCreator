@@ -11,13 +11,11 @@
     },
     "topicTitle": {
         "type": "string",
-        "description": "The main topic or title of the explanation.",
-        "minLength": 1
+        "description": "The main topic or title of the explanation."
     },
     "dialogue": {
         "type": "array",
         "description": "Ordered list of dialogue lines.",
-        "minItems": 1,
         "items": {
             "type": "object",
             "required": ["characterId", "text"],
@@ -68,8 +66,7 @@
           },
           "font": {
               "type": "string",
-              "description": "Font of the subtitles.",
-              "minLength": 1
+              "description": "Font of the subtitles."
           },
           "position": {
               "type": "string",

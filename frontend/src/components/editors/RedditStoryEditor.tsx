@@ -3,6 +3,9 @@
 import { useState, ChangeEvent } from 'react';
 import { RedditStoryDraft, RedditStoryParams } from '@/types';
 import { PlusCircle, Send, Trash2, AlertCircle } from 'lucide-react';
+import { FormField, FormSection, FormSelect } from '@/components/editors/customization/common';
+import { SubtitleOptions } from './customization/SubtitleOptions';
+import { VideoOptions } from './customization/VideoOptions';
 
 // --- Prop Definition ---
 interface EditorProps {
@@ -28,17 +31,19 @@ const defaultParams: RedditStoryParams = {
   backgroundMusicId: '',
   avatarImageUrl: 'assets/reddit/reddit_avatar_placeholder.png',
   aspectRatio: '9:16',
-  showSubtitles: true,
-  subtitlesColor: '#FFFFFF',
-  subtitlesFont: 'Arial',
-  subtitlesPosition: 'bottom',
+  subtitles: {
+    show: true,
+    color: '#FFFFFF',
+    font: 'Arial',
+    position: 'bottom',
+  },
   voiceSelection: 'openai_alloy',
   theme: 'dark',
 };
 
 // --- Validation Logic ---
-const validate = (params: RedditStoryParams): Record<string, string> => {
-  const errors: Record<string, string> = {};
+const validate = (params: RedditStoryParams): Record<string, any> => {
+  const errors: Record<string, any> = {};
 
   // Required string fields and minLength checks
   if (!params.username?.trim()) errors.username = 'Username is required.';
@@ -55,11 +60,13 @@ const validate = (params: RedditStoryParams): Record<string, string> => {
   if (!params.backgroundVideoId) errors.backgroundVideoId = 'Background video is required.';
   if (!params.voiceSelection) errors.voiceSelection = 'Narration voice is required.';
 
-  // Subtitle validation (only if shown)
-  if (params.showSubtitles) {
-    if (!params.subtitlesFont?.trim()) errors.subtitlesFont = 'Subtitle font is required.';
-    if (!/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(params.subtitlesColor)) {
-      errors.subtitlesColor = 'Must be a valid hex color.';
+  // Nested validation for subtitles
+  if (params.subtitles?.show) {
+    if (!params.subtitles.font?.trim()) {
+      errors.subtitles = { ...errors.subtitles, font: 'Subtitle font is required.' };
+    }
+    if (!/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(params.subtitles.color)) {
+      errors.subtitles = { ...errors.subtitles, color: 'Must be a valid hex color.' };
     }
   }
 
@@ -76,7 +83,6 @@ export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving }: E
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // A single handler for most form inputs
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     
@@ -87,6 +93,10 @@ export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving }: E
     setParams(prev => ({
       ...prev,
       [name]: isCheckbox ? checkedValue : value,
+      subtitles: {
+        ...prev.subtitles,
+        [name]: isCheckbox ? checkedValue : value,
+      }
     }));
   };
 
@@ -174,7 +184,7 @@ export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving }: E
       </FormSection>
 
       {/* --- Customization Section --- */}
-      <FormSection title="Video Customization">
+      {/* <FormSection title="Video Customization">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <FormSelect label="Background Video" name="backgroundVideoId" value={params.backgroundVideoId} onChange={handleChange} error={errors.backgroundVideoId}>
             <option value="minecraft1">Minecraft Parkour</option>
@@ -203,69 +213,32 @@ export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving }: E
             <option value="light">Light</option>
           </FormSelect>
         </div>
-      </FormSection>
-      
-      {/* --- Subtitles Section (Collapsible) --- */}
-      <details className="p-4 border border-accent/50 rounded-lg">
-        <summary className="font-semibold cursor-pointer text-foreground">Subtitle Options</summary>
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="flex items-center space-x-4 pt-6">
-            <label htmlFor="showSubtitles" className="text-sm font-medium text-foreground/80">Show Subtitles</label>
-            <ToggleSwitch name="showSubtitles" enabled={params.showSubtitles} onChange={handleChange} />
-          </div>
-          <FormField label="Font" name="subtitlesFont" value={params.subtitlesFont} onChange={handleChange} disabled={!params.showSubtitles} error={errors.subtitlesFont} />
-          <FormSelect label="Position" name="subtitlesPosition" value={params.subtitlesPosition} onChange={handleChange} disabled={!params.showSubtitles}>
-            <option value="bottom">Bottom</option>
-            <option value="center">Center</option>
-            <option value="top">Top</option>
-          </FormSelect>
-          <FormField label="Color" name="subtitlesColor" type="color" value={params.subtitlesColor} onChange={handleChange} className="w-16 h-10" disabled={!params.showSubtitles} error={errors.subtitlesColor}/>
-        </div>
-      </details>
+      </FormSection> */}
+      <VideoOptions>
+        <VideoOptions.BackgroundVideo
+          value={params.backgroundVideoId}
+          onChange={handleChange}
+          error={errors.backgroundVideoId}
+        />
+        <VideoOptions.Music
+          value={params.backgroundMusicId}
+          onChange={handleChange}
+        />
+        <VideoOptions.Voice 
+          value={params.voiceSelection}
+          onChange={handleChange}
+          error={errors.voiceSelection}
+        />
+        <VideoOptions.Theme
+          value={params.theme}
+          onChange={handleChange}
+        />
+      </VideoOptions>
+
+      <SubtitleOptions params={params.subtitles} errors={errors.subtitles} onChange={handleChange} />
     </div>
   );
 }
-
-// --- Reusable Sub-Components ---
-
-// Section wrapper for consistent styling
-const FormSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="space-y-4 p-4 border border-accent/50 rounded-lg">
-    <h3 className="font-semibold text-lg text-foreground">{title}</h3>
-    <div className="space-y-4">{children}</div>
-  </div>
-);
-
-// Generic Form Field for inputs and textareas
-const FormField = ({ label, name, as = 'input', error, ...props }) => (
-  <div>
-    <label htmlFor={name} className="block text-sm font-medium text-foreground/80 mb-1">{label}</label>
-    {as === 'textarea'
-      ? <textarea id={name} name={name} {...props} className={`block w-full bg-background/50 border rounded-md p-2 focus:ring-primary/50 ${error ? 'border-red-500' : 'border-accent'}`} />
-      : <input id={name} name={name} {...props} className={`block w-full bg-background/50 border rounded-md p-2 focus:ring-primary/50 ${props.type === 'color' ? 'p-1' : ''} ${error ? 'border-red-500' : 'border-accent'}`} />
-    }
-    {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-  </div>
-);
-
-// Generic Select Field
-const FormSelect = ({ label, name, children, error, ...props }) => (
-  <div>
-    <label htmlFor={name} className="block text-sm font-medium text-foreground/80 mb-1">{label}</label>
-    <select id={name} name={name} {...props} className={`block w-full bg-background/50 border rounded-md p-2 focus:ring-primary/50 ${error ? 'border-red-500' : 'border-accent'}`}>
-      {children}
-    </select>
-    {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-  </div>
-);
-
-// Modern Toggle Switch
-const ToggleSwitch = ({ name, enabled, onChange }) => (
-  <label htmlFor={name} className="inline-flex items-center cursor-pointer">
-    <input id={name} name={name} type="checkbox" checked={enabled} onChange={onChange} className="sr-only peer" />
-    <div className="relative w-11 h-6 bg-accent/50 rounded-full peer peer-focus:ring-2 peer-focus:ring-primary/50 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-  </label>
-);
 
 // Dedicated component to manage the dynamic list of comments
 function CommentsManager({ initialComments, onUpdate }: { initialComments: Comment[]; onUpdate: (comments: Comment[]) => void; }) {

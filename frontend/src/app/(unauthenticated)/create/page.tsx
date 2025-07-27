@@ -14,10 +14,10 @@ const contentTemplates = [
   },
   {
     id: 'another-template',
-    title: 'Coming Soon',
-    description: 'A new template will be available in the near future.',
-    videoSrc: '/videos/test_reddit_story2.mp4', // Placeholder
-    createUrl: '/editor/create/reddit_story_v1',
+    title: 'Character Explains',
+    description: 'A character explains a topic in a fun and engaging way.',
+    videoSrc: '/videos/test_character_explains.mp4',
+    createUrl: '/editor/create/character_explains_v1',
   },
   {
     id: 'another-templatee',

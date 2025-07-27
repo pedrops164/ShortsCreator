@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import apiClient from '@/lib/apiClient';
 import { RedditStoryEditor } from '@/components/editors/RedditStoryEditor';
+import { CharacterExplainsEditor } from '@/components/editors/CharacterExplainsEditor'; // Import new editor component
 import { Draft } from '@/types/drafts';
 import { CreationPayload } from '@/types/creation'; // Import new creation types
 
 // This map is used to dynamically load the correct editor component based on the template type
 const EDITOR_COMPONENT_MAP = {
   'reddit_story_v1': RedditStoryEditor,
+  'character_explains_v1': CharacterExplainsEditor,
 };
 
 export default function EditorPage() {

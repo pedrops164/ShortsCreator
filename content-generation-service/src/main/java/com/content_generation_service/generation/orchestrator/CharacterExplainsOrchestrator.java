@@ -103,6 +103,7 @@ public class CharacterExplainsOrchestrator {
             VideoCompositionBuilder compositionBuilder = new VideoCompositionBuilder(1080, 1920)
                 .withBackground(backgroundVideo)
                 .withNarration(narration.getAudioFilePath())
+                .withOutputDuration(narration.getDurationSeconds())
                 .withProgressListener(scopedProgressListener);
 
             // Determine character order dynamically
