@@ -1,0 +1,25 @@
+
+spring:
+    datasource:
+        url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+        username: ${POSTGRES_USER}
+        password: ${POSTGRES_PASSWORD}
+        driver-class-name: org.postgresql.Driver
+    jpa:
+        open-in-view: false
+        hibernate:
+            ddl-auto: update
+        show-sql: true
+        properties:
+            hibernate:
+                format_sql: true
+
+stripe:
+    secret-key: ${STRIPE_SECRET_KEY}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+    success-url: "http://localhost:3000/payment/success"
+    cancel-url: "http://localhost:3000/payment/cancelled"
+    # Map internal package names to the real Stripe Price IDs
+    price-map:
+        "topup_05_usd": ${STRIPE_TOPUP_05_PRICE_ID}
+        "topup_10_usd": ${STRIPE_TOPUP_10_PRICE_ID}
