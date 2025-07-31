@@ -44,7 +44,7 @@ spring:
             - id: payment-service-private
               uri: http://localhost:8087 # Internal network address
               predicates:
-                - Path=/api/v1/payments/**, /api/v1/balance/**
+                - Path=/api/v1/payments/**, /api/v1/balance/**, /api/v1/transactions/**
               filters:
                 # This applies our filter that adds the X-User-ID header
                 - AddUserIdHeader

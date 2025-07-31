@@ -56,6 +56,14 @@ public class StripeController {
                 log.info("Received checkout.session.completed event for session ID: {}", session.getId());
                 paymentService.handleCheckoutSessionCompleted(session);
                 break;
+            case "checkout.session.async_payment_succeeded":
+                Session succeededSession = (Session) stripeObject;
+                paymentService.handleAsyncPaymentSucceeded(succeededSession);
+                break;
+            case "checkout.session.async_payment_failed":
+                Session failedSession = (Session) stripeObject;
+                paymentService.handleAsyncPaymentFailed(failedSession);
+                break;
             case "charge.dispute.created":
                 Charge disputedCharge = (Charge) stripeObject;
                 log.info("Received charge.dispute.created for charge ID: {}", disputedCharge.getId());

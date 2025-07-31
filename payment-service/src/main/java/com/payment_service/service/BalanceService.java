@@ -1,6 +1,8 @@
 package com.payment_service.service;
 
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,9 +34,18 @@ public class BalanceService {
         // Find the balance or create a new one with 0 balance in USD if it doesn't exist.
         return userBalanceRepository.findByUserId(userId)
             .orElseGet(() -> {
-                log.info("No balance record found for user ID: {}. Creating a new one.", userId);
+                // If it doesn't exist, attempt to create and save it.
+                log.info("No balance record found for user ID: {}. Attempting to create a new one.", userId);
                 UserBalance newBalance = new UserBalance(userId);
-                return userBalanceRepository.save(newBalance);
+                try {
+                    return userBalanceRepository.save(newBalance);
+                } catch (DataIntegrityViolationException e) {
+                    // If we get this specific exception, it means a concurrent request beat us to it.
+                    log.warn("Race condition detected for user ID: {}. Another request created the balance. Re-fetching.", userId);
+                    // The record is guaranteed to exist now, so we can fetch it again.
+                    // The .get() is safe here because we know the record was just created.
+                    return userBalanceRepository.findByUserId(userId).get();
+                }
             });
     }
 

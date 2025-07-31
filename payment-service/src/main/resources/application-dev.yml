@@ -8,7 +8,8 @@ spring:
     jpa:
         open-in-view: false
         hibernate:
-            ddl-auto: update
+            # ddl-auto: update
+            ddl-auto: create-drop
         show-sql: true
         properties:
             hibernate:
@@ -17,8 +18,8 @@ spring:
 stripe:
     secret-key: ${STRIPE_SECRET_KEY}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET}
-    success-url: "http://localhost:3000/payment/success"
-    cancel-url: "http://localhost:3000/payment/cancelled"
+    success-url: "http://localhost:3000/account"
+    cancel-url: "http://localhost:3000/account"
     # Map internal package names to the real Stripe Price IDs
     price-map:
         "topup_05_usd": ${STRIPE_TOPUP_05_PRICE_ID}

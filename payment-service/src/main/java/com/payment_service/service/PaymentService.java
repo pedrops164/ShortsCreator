@@ -15,6 +15,7 @@ import com.stripe.param.checkout.SessionCreateParams;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -107,10 +108,6 @@ public class PaymentService {
             return; 
         }
 
-        // Add the funds to the user's balance.
-        userBalance.setBalanceInCents(userBalance.getBalanceInCents() + amountPaid);
-        userBalanceRepository.save(userBalance);
-
         // Create and save a transaction record for auditing purposes.
         PaymentTransaction transaction = new PaymentTransaction();
         transaction.setUserId(userId);
@@ -118,11 +115,49 @@ public class PaymentService {
         transaction.setPaymentIntentId(session.getPaymentIntent());
         transaction.setAmountPaid(Math.toIntExact(amountPaid));
         transaction.setCurrency(session.getCurrency().toUpperCase());
-        transaction.setStatus(TransactionStatus.COMPLETED);
+
+        // Set the initial status based on the payment type
+        if ("paid".equals(session.getPaymentStatus())) {
+            log.info("Synchronous payment for session {} completed successfully.", session.getId());
+            addBalanceToUser(userId, amountPaid);
+            transaction.setStatus(TransactionStatus.COMPLETED);
+            // TODO: Notify frontend that payment was successful.
+        } else {
+            log.info("Asynchronous payment for session {} initiated. Status is PENDING.", session.getId());
+            transaction.setStatus(TransactionStatus.PENDING);
+            // TODO: Notify frontend that payment is now pending.
+        }
+
         paymentTransactionRepository.save(transaction);
-        
-        log.info("Successfully processed payment for user {} from session {}. New balance: {}",
-            userId, session.getId(), userBalance.getBalanceInCents());
+    }
+
+    @Transactional
+    public void handleAsyncPaymentSucceeded(Session session) {
+        log.info("Asynchronous payment succeeded for session {}.", session.getId());
+        paymentTransactionRepository.findByStripeCheckoutSessionId(session.getId()).ifPresentOrElse(transaction -> {
+            if (transaction.getStatus() == TransactionStatus.PENDING) {
+                transaction.setStatus(TransactionStatus.COMPLETED);
+                addBalanceToUser(transaction.getUserId(), session.getAmountTotal());
+                // TODO: Notify frontend that the pending payment is now complete.
+            }
+        }, () -> {
+            log.warn("No transaction found for session {}. Cannot update status.", session.getId());
+            // TODO: Alert support team
+        });
+    }
+
+    @Transactional
+    public void handleAsyncPaymentFailed(Session session) {
+        String userId = session.getMetadata().get("userId");
+        log.warn("Asynchronous payment failed for session {} for user {}.", session.getId(), userId);
+        paymentTransactionRepository.findByStripeCheckoutSessionId(session.getId()).ifPresentOrElse(transaction -> {
+            transaction.setStatus(TransactionStatus.FAILED);
+            paymentTransactionRepository.save(transaction);
+            // TODO: Notify frontend that the payment has failed.
+        }, () -> {
+            log.warn("No transaction found for session {}. Cannot update status.", session.getId());
+            // TODO: Alert support team
+        });
     }
 
     /**
@@ -184,6 +219,22 @@ public class PaymentService {
             transaction.setStatus(TransactionStatus.REFUNDED);
             paymentTransactionRepository.save(transaction);
             log.info("Updated transaction {} to REFUNDED status.", transaction.getId());
+        });
+    }
+
+    private void addBalanceToUser(String userId, long amountToAdd) {
+        // ... implementation remains the same ...
+        userBalanceRepository.findByUserId(userId).ifPresentOrElse(userBalance -> {
+            userBalance.setBalanceInCents(userBalance.getBalanceInCents() + amountToAdd);
+            userBalanceRepository.save(userBalance);
+            log.info("Added {} cents to user {}'s balance. New balance: {}",
+                amountToAdd, userId, userBalance.getBalanceInCents());
+        }, () -> {
+            // If no balance exists, create a new one
+            UserBalance newUserBalance = new UserBalance(userId);
+            newUserBalance.setBalanceInCents(amountToAdd);
+            userBalanceRepository.save(newUserBalance);
+            log.info("Created new balance for user {} with initial amount: {}", userId, amountToAdd);
         });
     }
 }

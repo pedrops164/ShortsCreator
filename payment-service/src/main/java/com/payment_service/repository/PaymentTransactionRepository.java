@@ -7,6 +7,8 @@ import com.payment_service.model.PaymentTransaction;
 
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface PaymentTransactionRepository extends JpaRepository<PaymentTransaction, UUID> {
@@ -25,4 +27,19 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
      * @return The PaymentTransaction if found, null otherwise.
      */
     Optional<PaymentTransaction> findByPaymentIntentId(String paymentIntentId);
+
+    /**
+     * Finds a transaction by its Stripe Checkout Session ID.
+     * @param sessionId The Stripe Checkout Session ID.
+     * @return The PaymentTransaction if found, null otherwise.
+     */
+    Optional<PaymentTransaction> findByStripeCheckoutSessionId(String sessionId);
+
+    /**
+     * Finds all transactions for a given user, ordered by creation date descending.
+     * @param userId The ID of the user.
+     * @param pageable The pagination information (page number, size).
+     * @return A paginated list of transactions.
+     */
+    Page<PaymentTransaction> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
 }

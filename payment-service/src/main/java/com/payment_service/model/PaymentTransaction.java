@@ -33,7 +33,7 @@ public class PaymentTransaction {
     private String currency;
     
     // useful to track the payment intent in Stripe
-    @Column(name = "payment_intent_id", unique = true)
+    @Column(name = "payment_intent_id", unique = true, nullable = false)
     private String paymentIntentId;
 
     @Enumerated(EnumType.STRING)

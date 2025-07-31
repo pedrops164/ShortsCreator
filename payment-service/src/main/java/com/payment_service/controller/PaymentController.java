@@ -26,7 +26,7 @@ public class PaymentController {
      *
      * @param userId The ID of the user initiating the payment.
      * @param request The request containing the desired top-up package.
-     * @return A response containing the Stripe session ID.
+     * @return A response containing the Stripe checkout redirect url.
      */
     @PostMapping("/create-checkout-session")
     public ResponseEntity<CreateCheckoutResponse> createCheckoutSession(
@@ -39,7 +39,7 @@ public class PaymentController {
         // Delegate the complex logic of interacting with Stripe to the service layer
         Session session = paymentService.createStripeCheckoutSession(request, userId);
 
-        CreateCheckoutResponse response = new CreateCheckoutResponse(session.getId());
+        CreateCheckoutResponse response = new CreateCheckoutResponse(session.getUrl());
         
         return ResponseEntity.ok(response);
     }
