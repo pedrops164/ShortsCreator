@@ -54,8 +54,8 @@ public class BalanceService {
      * ensuring atomicity. It checks for sufficient funds and currency consistency.
      *
      * @param debitRequest The request DTO containing user ID, amount, and currency.
-     * @throws ResourceNotFoundException  if the user's balance record doesn't exist.
-     * @throws InsufficientFundsException if the user's balance is less than the debit amount.
+     * @throws ResourceNotFoundException (404 error)  if the user's balance record doesn't exist.
+     * @throws InsufficientFundsException (409 error) if the user's balance is less than the debit amount.
      * @throws IllegalArgumentException if the debit currency does not match the user's balance currency.
      */
     @Transactional
