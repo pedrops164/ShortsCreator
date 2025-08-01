@@ -2,11 +2,13 @@ package com.payment_service.service;
 
 import com.payment_service.config.StripeProperties;
 import com.payment_service.dto.CreateCheckoutRequest;
+import com.payment_service.messaging.PaymentStatusDispatcher;
 import com.payment_service.model.PaymentTransaction;
-import com.payment_service.model.TransactionStatus;
 import com.payment_service.model.UserBalance;
 import com.payment_service.repository.PaymentTransactionRepository;
 import com.payment_service.repository.UserBalanceRepository;
+import com.shortscreator.shared.dto.PaymentStatusUpdateV1;
+import com.shortscreator.shared.enums.TransactionStatus;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Charge;
@@ -27,6 +29,7 @@ public class PaymentService {
     private final StripeProperties stripeProperties;
     private final UserBalanceRepository userBalanceRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
+    private final PaymentStatusDispatcher paymentStatusDispatcher;
 
     @PostConstruct
     public void init() {
@@ -121,11 +124,11 @@ public class PaymentService {
             log.info("Synchronous payment for session {} completed successfully.", session.getId());
             addBalanceToUser(userId, amountPaid);
             transaction.setStatus(TransactionStatus.COMPLETED);
-            // TODO: Notify frontend that payment was successful.
+            // No need to notify frontend here.
         } else {
             log.info("Asynchronous payment for session {} initiated. Status is PENDING.", session.getId());
             transaction.setStatus(TransactionStatus.PENDING);
-            // TODO: Notify frontend that payment is now pending.
+            // No need to notify frontend here.
         }
 
         paymentTransactionRepository.save(transaction);
@@ -139,6 +142,15 @@ public class PaymentService {
                 transaction.setStatus(TransactionStatus.COMPLETED);
                 addBalanceToUser(transaction.getUserId(), session.getAmountTotal());
                 // TODO: Notify frontend that the pending payment is now complete.
+                PaymentStatusUpdateV1 update = new PaymentStatusUpdateV1(
+                    transaction.getUserId(),
+                    transaction.getId(),
+                    Math.toIntExact(session.getAmountTotal()),
+                    TransactionStatus.COMPLETED
+                );
+                // Publish the update to the message broker
+                paymentStatusDispatcher.dispatchPaymentStatus(update);
+                paymentTransactionRepository.save(transaction);
             }
         }, () -> {
             log.warn("No transaction found for session {}. Cannot update status.", session.getId());
@@ -154,6 +166,14 @@ public class PaymentService {
             transaction.setStatus(TransactionStatus.FAILED);
             paymentTransactionRepository.save(transaction);
             // TODO: Notify frontend that the payment has failed.
+            PaymentStatusUpdateV1 update = new PaymentStatusUpdateV1(
+                userId,
+                transaction.getId(),
+                Math.toIntExact(session.getAmountTotal()),
+                TransactionStatus.FAILED
+            );
+            // Publish the update to the message broker
+            paymentStatusDispatcher.dispatchPaymentStatus(update);
         }, () -> {
             log.warn("No transaction found for session {}. Cannot update status.", session.getId());
             // TODO: Alert support team
@@ -222,8 +242,15 @@ public class PaymentService {
         });
     }
 
+    /**
+     * Adds the specified amount to the user's balance.
+     * If no balance exists, creates a new one.
+     *
+     * @param userId The internal user ID.
+     * @param amountToAdd The amount in cents to add to the user's balance.
+     */
+    @Transactional
     private void addBalanceToUser(String userId, long amountToAdd) {
-        // ... implementation remains the same ...
         userBalanceRepository.findByUserId(userId).ifPresentOrElse(userBalance -> {
             userBalance.setBalanceInCents(userBalance.getBalanceInCents() + amountToAdd);
             userBalanceRepository.save(userBalance);

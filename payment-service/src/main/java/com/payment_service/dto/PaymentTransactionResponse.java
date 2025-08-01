@@ -2,8 +2,7 @@ package com.payment_service.dto;
 
 import java.time.Instant;
 import java.util.UUID;
-
-import com.payment_service.model.TransactionStatus;
+import com.shortscreator.shared.enums.TransactionStatus;
 
 public record PaymentTransactionResponse(
     UUID id,

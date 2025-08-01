@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Banknote, CheckCircle, XCircle, Clock, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { Page, PaymentTransactionResponse } from '@/types';
+import { useNotifications } from '@/context/NotificationContext'; // <-- Import the hook
 
 const StatusBadge = ({ status }: { status: string }) => {
   const statusStyles = {
@@ -84,6 +85,8 @@ export default function TransactionHistory() {
   const [currentPage, setCurrentPage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { latestPaymentStatus } = useNotifications();
+
 
   const fetchTransactions = useCallback(async (page: number) => {
     setIsLoading(true);
@@ -105,6 +108,16 @@ export default function TransactionHistory() {
   useEffect(() => {
     fetchTransactions(currentPage);
   }, [currentPage, fetchTransactions]);
+
+  // Re-fetch transactions when a relevant notification arrives
+  useEffect(() => {
+    if (latestPaymentStatus) {
+      console.log('TransactionHistory received a payment status update, refetching transactions.');
+      // Re-fetch the current page to get the latest status
+      fetchTransactions(currentPage);
+    }
+  }, [latestPaymentStatus, currentPage, fetchTransactions]);
+
 
   return (
     <div className="p-6 border rounded-lg bg-background/20 border-accent/50">

@@ -8,7 +8,7 @@ public record VideoStatusUpdateV1(
     ContentStatus status,
     Double progressPercentage
 ) {
-    // Compact constructor for validation (Java 16+)
+    // Compact constructor for validation
     public VideoStatusUpdateV1 {
         if (status == ContentStatus.PROCESSING) {
             if (progressPercentage == null) {
@@ -18,7 +18,6 @@ public record VideoStatusUpdateV1(
                 throw new IllegalArgumentException("Progress percentage must be between 0 and 100 for PROCESSING status.");
             }
         } else if (status == ContentStatus.COMPLETED) {
-            // For completed, you can enforce 100% or allow null/ignore the field
             // Let's ensure it's 100% or null and we interpret null as 100%
             if (progressPercentage != null && progressPercentage != 100.0) {
                  throw new IllegalArgumentException("COMPLETED status must have 100% progress or null.");

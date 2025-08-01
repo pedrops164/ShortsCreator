@@ -5,6 +5,7 @@ import { DollarSign, Zap, Loader2, AlertCircle, Banknote } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { BalanceResponse, CreateCheckoutResponse } from '@/types';
 import TransactionHistory from '@/components/TransactionHistory';
+import { useNotifications } from '@/context/NotificationContext';
 
 // --- Helper Components (can be in the same file or imported) ---
 
@@ -47,23 +48,33 @@ export default function AccountPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState<string | null>(null);
+  const { latestPaymentStatus } = useNotifications();
 
+  const fetchBalance = async () => {
+    try {
+      // Assume api.get returns a response like { data: { balance: 12.34 } }
+      const response = await apiClient.get<BalanceResponse>('/balance');
+      setBalance(response.data.balanceInCents / 100); // Convert cents to dollars
+    } catch (err) {
+      console.error("Failed to fetch balance:", err);
+      setError('Could not load');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch balance on initial load
   useEffect(() => {
-    const fetchBalance = async () => {
-      try {
-        // Assume api.get returns a response like { data: { balance: 12.34 } }
-        const response = await apiClient.get<BalanceResponse>('/balance');
-        setBalance(response.data.balanceInCents / 100); // Convert cents to dollars
-      } catch (err) {
-        console.error("Failed to fetch balance:", err);
-        setError('Could not load');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchBalance();
   }, []);
+
+  // Re-fetch balance when a payment is completed or refunded
+  useEffect(() => {
+    if (latestPaymentStatus && (latestPaymentStatus.status === 'COMPLETED' || latestPaymentStatus.status === 'REFUNDED' || latestPaymentStatus.status === 'DISPUTED')) {
+      console.log('Payment status changed, refetching balance...');
+      fetchBalance();
+    }
+  }, [latestPaymentStatus]);
 
   const handleTopUp = async (packageId: string) => {
     setIsRedirecting(packageId);

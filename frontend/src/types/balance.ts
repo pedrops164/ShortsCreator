@@ -32,3 +32,14 @@ export interface PaymentTransactionResponse {
   createdAt: string; // ISO 8601 date string
   paymentIntentId: string;
 }
+
+/*
+  * Represents the structure of a payment status update event.
+  * This matches the PaymentStatusUpdate DTO on the backend.
+  */
+export interface PaymentStatusUpdate {
+  userId: string;
+  transactionId: string;
+  amount: number; // in cents
+  status: TransactionStatus;
+}

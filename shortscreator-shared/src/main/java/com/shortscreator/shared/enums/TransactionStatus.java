@@ -1,4 +1,4 @@
-package com.payment_service.model;
+package com.shortscreator.shared.enums;
 
 /**
  * Represents the status of a payment transaction.
