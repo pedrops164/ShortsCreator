@@ -1,34 +1,96 @@
-import { FormField, FormSelect, ToggleSwitch } from '@/components/editors/customization/common'; // Assuming shared components are moved
+'use client';
 
-// Define props for the component
-interface SubtitleOptionsProps {
-  params: {
-    show: boolean;
-    font: string;
-    position: string;
-    color: string;
-  };
-  errors?: any;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+
+// --- Type Definition ---
+// This should match the structure in the `CharacterExplainsParams` type
+export interface SubtitleSettings {
+  show: boolean;
+  font: string;
+  color: string;
+  position: string;
 }
 
-export function SubtitleOptions({ params, errors, onChange }: SubtitleOptionsProps) {
+// --- Prop Definition ---
+interface SubtitleOptionsProps {
+  value: SubtitleSettings;
+  onChange: (field: keyof SubtitleSettings, value: any) => void;
+  hasErrors?: boolean; 
+}
+
+export function SubtitleOptions({ value, onChange, hasErrors }: SubtitleOptionsProps) {
   return (
-    <details className="p-4 border rounded-lg border-accent/50" open>
-      <summary className="font-semibold cursor-pointer text-foreground">Subtitle Options</summary>
-      <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="flex items-center pt-6 space-x-4">
-          <label htmlFor="show" className="text-sm font-medium text-foreground/80">Show Subtitles</label>
-          <ToggleSwitch name="show" enabled={params.show} onChange={onChange} />
-        </div>
-        <FormField label="Font" name="font" value={params.font} onChange={onChange} disabled={!params.show} error={errors?.font} />
-        <FormSelect label="Position" name="position" value={params.position} onChange={onChange} disabled={!params.show}>
-          <option value="bottom">Bottom</option>
-          <option value="center">Center</option>
-          <option value="top">Top</option>
-        </FormSelect>
-        <FormField label="Color" name="color" type="color" value={params.color} onChange={onChange} className="w-16 h-10" disabled={!params.show} error={errors?.color} />
-      </div>
-    </details>
+    <Card className={hasErrors ? 'border-destructive' : ''}>
+        <CardHeader>
+            <CardTitle>Subtitle Customization</CardTitle>
+            <CardDescription>Adjust the appearance of the text captions.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="show-subtitles" className="font-semibold">
+                    Enable Subtitles
+                    </Label>
+                    <Switch
+                        id="show-subtitles"
+                        checked={value.show}
+                        onCheckedChange={(checked) => onChange('show', checked)}
+                    />
+                </div>
+                {value.show && (
+                <>
+                    <Separator />
+                    <div className="space-y-4 pt-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label className="text-xs text-muted-foreground">Font</Label>
+                                <Select value={value.font} onValueChange={(font) => onChange('font', font)}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Arial">Arial</SelectItem>
+                                        <SelectItem value="Verdana">Verdana</SelectItem>
+                                        <SelectItem value="The Bold Font">The Bold Font</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label className="text-xs text-muted-foreground">Position</Label>
+                                <Select value={value.position} onValueChange={(pos) => onChange('position', pos)}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="top">Top</SelectItem>
+                                        <SelectItem value="center">Center</SelectItem>
+                                        <SelectItem value="bottom">Bottom</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground">Text Color</Label>
+                            <div className="flex items-center space-x-2">
+                            <Input
+                                type="color"
+                                value={value.color}
+                                onChange={(e) => onChange('color', e.target.value)}
+                                className="p-1 h-10 w-10"
+                            />
+                            <Input
+                                value={value.color.toUpperCase()}
+                                onChange={(e) => onChange('color', e.target.value)}
+                                className="w-24 bg-muted border"
+                            />
+                            </div>
+                        </div>
+                    </div>
+                </>
+                )}
+            </div>
+        </CardContent>
+    </Card>
   );
 }

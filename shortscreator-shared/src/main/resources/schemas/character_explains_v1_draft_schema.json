@@ -37,7 +37,7 @@
     "backgroundVideoId": {
         "type": "string",
         "description": "ID of the selected background video.",
-        "enum": ["minecraft1", "gta1"]
+        "enum": ["minecraft1", "subway_surfers1"]
     },
     "characterLayout": {
         "type": "string",
@@ -71,8 +71,8 @@
           "position": {
               "type": "string",
               "description": "Position of the subtitles.",
-              "enum": ["bottom", "center"],
-              "default": "bottom"
+              "enum": ["center", "top"],
+              "default": "center"
           }
         },
         "additionalProperties": false

@@ -1,279 +1,263 @@
 'use client';
 
-import { useState, ChangeEvent } from 'react';
+import React, { useState, ChangeEvent, useRef } from 'react';
 import { RedditStoryDraft, RedditStoryParams } from '@/types';
-import { PlusCircle, Send, Trash2, AlertCircle } from 'lucide-react';
-import { FormField, FormSection, FormSelect } from '@/components/editors/customization/common';
-import { SubtitleOptions } from './customization/SubtitleOptions';
-import { VideoOptions } from './customization/VideoOptions';
 
-// --- Prop Definition ---
+// --- UI Components & Icons ---
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
+import {
+  Save, Send, Plus, Trash2, AlertCircle, MessageSquare, User, Video, ArrowLeft, Loader2, Hash, FileText,
+} from "lucide-react";
+import { VideoCustomization } from './customization/VideoCustomization';
+import { SubtitleOptions } from './customization/SubtitleOptions';
+
 interface EditorProps {
   initialData: RedditStoryDraft;
   onSave: (data: RedditStoryDraft) => void;
   onSubmit: (data: RedditStoryDraft) => void;
   isSaving: boolean;
+  isSubmitting: boolean; // Added for separate submit state
 }
 
-interface Comment {
-  author: string;
-  text: string;
-}
-
-// --- Default values for a new draft ---
+// --- Default Values ---
 const defaultParams: RedditStoryParams = {
   username: '',
   subreddit: '',
   postTitle: '',
   postDescription: '',
-  comments: [], // Default to an empty array
-  backgroundVideoId: 'minecraft1',
-  backgroundMusicId: '',
+  comments: [],
+  backgroundVideoId: '',
+  backgroundMusicId: 'none',
   avatarImageUrl: 'assets/reddit/reddit_avatar_placeholder.png',
   aspectRatio: '9:16',
   subtitles: {
     show: true,
     color: '#FFFFFF',
-    font: 'Arial',
+    font: 'Roboto',
     position: 'bottom',
   },
-  voiceSelection: 'openai_alloy',
+  voiceSelection: '',
   theme: 'dark',
 };
 
 // --- Validation Logic ---
 const validate = (params: RedditStoryParams): Record<string, any> => {
   const errors: Record<string, any> = {};
-
-  // Required string fields and minLength checks
   if (!params.username?.trim()) errors.username = 'Username is required.';
   else if (params.username.length < 3) errors.username = 'Username must be at least 3 characters.';
-
   if (!params.subreddit?.trim()) errors.subreddit = 'Subreddit is required.';
-
   if (!params.postTitle?.trim()) errors.postTitle = 'Post Title is required.';
-  else if (params.postTitle.length < 3) errors.postTitle = 'Post Title must be at least 3 characters.';
-
+  else if (params.postTitle.length < 5) errors.postTitle = 'Post Title must be at least 5 characters.';
   if (!params.postDescription?.trim()) errors.postDescription = 'Post Description is required.';
-  else if (params.postDescription.length < 5) errors.postDescription = 'Post Description must be at least 5 characters.';
-
+  else if (params.postDescription.length < 10) errors.postDescription = 'Post Description must be at least 10 characters.';
   if (!params.backgroundVideoId) errors.backgroundVideoId = 'Background video is required.';
   if (!params.voiceSelection) errors.voiceSelection = 'Narration voice is required.';
-
-  // Nested validation for subtitles
   if (params.subtitles?.show) {
-    if (!params.subtitles.font?.trim()) {
-      errors.subtitles = { ...errors.subtitles, font: 'Subtitle font is required.' };
-    }
-    if (!/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(params.subtitles.color)) {
-      errors.subtitles = { ...errors.subtitles, color: 'Must be a valid hex color.' };
+    if (!params.subtitles.font?.trim()) errors.subtitles = { ...errors.subtitles, font: 'Subtitle font is required.' };
+    if (!/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(params.subtitles.color || '')) {
+        errors.subtitles = { ...errors.subtitles, color: 'Must be a valid hex color.' };
     }
   }
-
   return errors;
 };
 
-
-// --- Main Editor Component ---
-export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving }: EditorProps) {
-  // Merge initial data over the defaults to create a complete state object
+export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving, isSubmitting }: EditorProps) {
   const [params, setParams] = useState<RedditStoryParams>({
     ...defaultParams,
     ...initialData.templateParams,
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, any>>({});
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    
-    const isCheckbox = type === 'checkbox';
-    // Asserting the target is a checkbox to access the 'checked' property
-    const checkedValue = isCheckbox ? (e.target as HTMLInputElement).checked : null;
+  const [newComment, setNewComment] = useState({ author: '', text: '' });
+  const commentsEndRef = useRef<HTMLDivElement>(null);
 
-    setParams(prev => ({
-      ...prev,
-      [name]: isCheckbox ? checkedValue : value,
-      subtitles: {
-        ...prev.subtitles,
-        [name]: isCheckbox ? checkedValue : value,
-      }
-    }));
+  // --- Handlers  ---
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setParams(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleSelectChange = (name: keyof RedditStoryParams, value: string) => {
+    setParams(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleSubtitleChange = (field: keyof NonNullable<RedditStoryParams['subtitles']>, value: any) => {
+    setParams(p => ({ ...p, subtitles: { ...p.subtitles, [field]: value } }));
   };
 
-  // Handler for updating the comments array from the sub-component
-  const handleCommentsChange = (newComments: Comment[]) => {
-    setParams(prev => ({ ...prev, comments: newComments }));
+  const addComment = () => {
+    if (newComment.text.trim() === '') return;
+    const author = newComment.author.trim() === '' ? 'Commenter' : newComment.author;
+    const updatedComments = [...params.comments, { ...newComment, author }];
+    setParams(prev => ({ ...prev, comments: updatedComments }));
+    setNewComment({ author: '', text: '' });
   };
 
-  // Handler for the final save action
+  const removeComment = (indexToRemove: number) => {
+    const updatedComments = params.comments.filter((_, index) => index !== indexToRemove);
+    setParams(prev => ({ ...prev, comments: updatedComments }));
+  };
+
   const handleSave = () => {
-    // Merge the updated params back into the main draft object before saving
     onSave({ ...initialData, templateParams: params });
   };
 
   const handleSubmit = () => {
     const validationErrors = validate(params);
     setErrors(validationErrors);
-    
     if (Object.keys(validationErrors).length === 0) {
       onSubmit({ ...initialData, templateParams: params });
     } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       console.log('Validation failed:', validationErrors);
     }
-  }
-
-  return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-primary">Reddit Story Editor</h2>
-          <p className="text-accent mt-1">Fill out the details to create your video.</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="bg-accent/20 text-foreground font-semibold py-2 px-4 rounded-lg hover:bg-accent/40 transition-colors disabled:opacity-50"
-          >
-            {isSaving ? 'Saving...' : 'Save Draft'}
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="flex items-center gap-2 bg-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            <Send size={16} />
-            Submit for Generation
-          </button>
-        </div>
-      </div>
-
-      {/* --- Validation Error Summary --- */}
-      {Object.keys(errors).length > 0 && (
-        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
-          <div className="flex items-center gap-2 font-semibold">
-            <AlertCircle size={20} />
-            Please fix the following errors:
-          </div>
-          <ul className="list-disc pl-10 mt-2 text-sm">
-            {Object.values(errors).map((error, i) => <li key={i}>{error}</li>)}
-          </ul>
-        </div>
-      )}
-
-      {/* --- Main Post Content Section --- */}
-      <FormSection title="Post Content">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Username" name="username" value={params.username} onChange={handleChange} error={errors.username} />
-          <FormField label="Subreddit" name="subreddit" value={params.subreddit} onChange={handleChange} placeholder="e.g., AskReddit" error={errors.subreddit} />
-        </div>
-        <FormField label="Post Title" name="postTitle" value={params.postTitle} onChange={handleChange} error={errors.postTitle} />
-        <FormField
-          label="Post Description"
-          name="postDescription"
-          value={params.postDescription}
-          onChange={handleChange}
-          as="textarea"
-          rows={5}
-          error={errors.postDescription}
-        />
-      </FormSection>
-
-      {/* --- Comments Section --- */}
-      <FormSection title="Comments">
-        <CommentsManager initialComments={params.comments} onUpdate={handleCommentsChange} />
-      </FormSection>
-
-      {/* --- Customization Section --- */}
-      {/* <FormSection title="Video Customization">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FormSelect label="Background Video" name="backgroundVideoId" value={params.backgroundVideoId} onChange={handleChange} error={errors.backgroundVideoId}>
-            <option value="minecraft1">Minecraft Parkour</option>
-            <option value="gta1">GTA Gameplay</option>
-          </FormSelect>
-          <FormSelect label="Background Music" name="backgroundMusicId" value={params.backgroundMusicId} onChange={handleChange}>
-            <option value="">None</option>
-            <option value="fun_1">Fun & Upbeat</option>
-            <option value="mysterious_1">Mysterious Vibe</option>
-          </FormSelect>
-          <FormSelect label="Narration Voice" name="voiceSelection" value={params.voiceSelection} onChange={handleChange} error={errors.voiceSelection}>
-            <option value="openai_alloy">Alloy (Neutral)</option>
-            <option value="openai_ash">Ash (Male)</option>
-            <option value="openai_ballad">Ballad (Female)</option>
-            <option value="openai_coral">Coral (Male)</option>
-            <option value="openai_echo">Echo (Female)</option>
-            <option value="openai_fable">Fable (Female)</option>
-            <option value="openai_onyx">Onyx (Male)</option>
-            <option value="openai_nova">Nova (Female)</option>
-            <option value="openai_sage">Sage (Male)</option>
-            <option value="openai_shimmer">Shimmer (Female)</option>
-            <option value="openai_verse">Verse (Neutral)</option>
-          </FormSelect>
-          <FormSelect label="Reddit Theme" name="theme" value={params.theme} onChange={handleChange}>
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-          </FormSelect>
-        </div>
-      </FormSection> */}
-      <VideoOptions>
-        <VideoOptions.BackgroundVideo
-          value={params.backgroundVideoId}
-          onChange={handleChange}
-          error={errors.backgroundVideoId}
-        />
-        <VideoOptions.Music
-          value={params.backgroundMusicId}
-          onChange={handleChange}
-        />
-        <VideoOptions.Voice 
-          value={params.voiceSelection}
-          onChange={handleChange}
-          error={errors.voiceSelection}
-        />
-        <VideoOptions.Theme
-          value={params.theme}
-          onChange={handleChange}
-        />
-      </VideoOptions>
-
-      <SubtitleOptions params={params.subtitles} errors={errors.subtitles} onChange={handleChange} />
-    </div>
-  );
-}
-
-// Dedicated component to manage the dynamic list of comments
-function CommentsManager({ initialComments, onUpdate }: { initialComments: Comment[]; onUpdate: (comments: Comment[]) => void; }) {
-  const [newComment, setNewComment] = useState({ author: '', text: '' });
-
-  const addComment = () => {
-    if (newComment.text.trim() === '') return;
-    const author = newComment.author.trim() === '' ? 'Commenter' : newComment.author;
-    onUpdate([...initialComments, { ...newComment, author }]);
-    setNewComment({ author: '', text: '' }); // Reset form
-  };
-
-  const removeComment = (indexToRemove: number) => {
-    onUpdate(initialComments.filter((_, index) => index !== indexToRemove));
   };
 
   return (
-    <div className="space-y-4">
-      {initialComments.map((comment, index) => (
-        <div key={index} className="flex items-start gap-2 bg-background/50 p-2 rounded">
-          <div className="flex-1">
-            <p className="font-semibold text-sm text-foreground">{comment.author}</p>
-            <p className="text-sm text-accent">{comment.text}</p>
-          </div>
-          <button onClick={() => removeComment(index)} className="text-red-500 hover:text-red-400 p-1">
-            <Trash2 size={16} />
-          </button>
+    <div className="p-4 md:p-6 lg:p-8 bg-background min-h-full">
+      <div className="max-w-5xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Reddit Story Editor</h1>
+            <div className="flex items-center space-x-3">
+            <Button variant="outline" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Draft
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                Submit for Generation
+            </Button>
+            </div>
         </div>
-      ))}
-      <div className="flex items-end gap-2 p-2 border-t border-accent/30 pt-4">
-        <FormField label="Author (Optional)" name="author" placeholder="Author" value={newComment.author} onChange={e => setNewComment(p => ({...p, author: e.target.value}))} />
-        <FormField label="Comment Text" name="text" placeholder="Add a new comment..." value={newComment.text} onChange={e => setNewComment(p => ({...p, text: e.target.value}))} />
-        <button onClick={addComment} className="bg-accent/30 hover:bg-accent/50 text-foreground p-2 rounded-md h-10">
-          <PlusCircle size={20} />
-        </button>
+
+        {/* Validation Errors */}
+        {Object.keys(errors).length > 0 && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+                <div className="font-medium text-red-700 dark:text-red-400 mb-2">Please fix the following errors:</div>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                    {Object.values(errors).flat().map((error: any, index) => (
+                        <li key={index}>{typeof error === 'string' ? error : Object.values(error).join(', ')}</li>
+                    ))}
+                </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="space-y-8">
+          {/* Reddit Post Details */}
+          <Card className={errors.username || errors.subreddit || errors.postTitle || errors.postDescription ? "border-destructive" : ""}>
+            <CardHeader>
+              <CardTitle className="flex items-center"><MessageSquare className="h-5 w-5 mr-2" />Reddit Post Details</CardTitle>
+              <CardDescription>Enter the main Reddit post information.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="username">Author's Username *</Label>
+                  <div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input id="username" name="username" placeholder="e.g., throwaway123" value={params.username} onChange={handleChange} className={`pl-10 ${errors.username ? "border-destructive" : ""}`}/>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="subreddit">Subreddit Name *</Label>
+                   <div className="relative"><Hash className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input id="subreddit" name="subreddit" placeholder="e.g., r/AskReddit" value={params.subreddit} onChange={handleChange} className={`pl-10 ${errors.subreddit ? "border-destructive" : ""}`}/>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="postTitle">Post Title *</Label>
+                <Input id="postTitle" name="postTitle" placeholder="e.g., What's the most embarrassing thing that happened to you?" value={params.postTitle} onChange={handleChange} className={errors.postTitle ? "border-destructive" : ""}/>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="postDescription">Post Description *</Label>
+                <Textarea id="postDescription" name="postDescription" placeholder="Enter the main story content here..." value={params.postDescription} onChange={handleChange} rows={8} className={`resize-none ${errors.postDescription ? "border-destructive" : ""}`}/>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Comments Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center"><MessageSquare className="h-5 w-5 mr-2" />Comments Section</CardTitle>
+              <CardDescription>Add comments that will be narrated after the main post (optional).</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {params.comments.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="font-medium">Comments ({params.comments.length})</h4>
+                  <div className="space-y-3 max-h-80 overflow-y-auto p-1">
+                    {params.comments.map((comment, index) => (
+                      <div key={index} className="flex items-start space-x-3 p-4 bg-muted/50 rounded-lg group">
+                        <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-medium">{index + 1}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium">u/{comment.author}</span>
+                            <Button variant="ghost" size="sm" onClick={() => removeComment(index)} className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-destructive">
+                                <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{comment.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={commentsEndRef} />
+                  </div>
+                </div>
+              )}
+              <div className="space-y-4 border-t pt-6">
+                <h4 className="font-medium">Add New Comment</h4>
+                <div className="grid md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="comment-author">Author (optional)</Label>
+                    <Input id="comment-author" placeholder="Commenter" value={newComment.author} onChange={(e) => setNewComment(p => ({...p, author: e.target.value}))}/>
+                  </div>
+                  <div className="md:col-span-3 space-y-2">
+                    <Label htmlFor="comment-text">Comment Text</Label>
+                    <Textarea id="comment-text" placeholder="Enter the comment text..." value={newComment.text} onChange={(e) => setNewComment(p => ({...p, text: e.target.value}))} rows={3} className="resize-none"/>
+                  </div>
+                </div>
+                <Button onClick={addComment} disabled={!newComment.text.trim()}><Plus className="h-4 w-4 mr-2" />Add Comment</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <VideoCustomization>
+            <VideoCustomization.BackgroundVideo
+              value={params.backgroundVideoId}
+              onChange={(value) => handleSelectChange('backgroundVideoId', value)}
+              error={errors.backgroundVideoId}
+            />
+            <Separator />
+            <VideoCustomization.Voice
+              value={params.voiceSelection}
+              onChange={(value) => handleSelectChange('voiceSelection', value)}
+              error={errors.voiceSelection}
+            />
+            <Separator />
+            <VideoCustomization.Theme
+              value={params.theme}
+              onChange={(value) => handleSelectChange('theme', value)}
+              error={errors.theme}
+            />
+          </VideoCustomization>
+          
+          <SubtitleOptions
+            value={params.subtitles}
+            onChange={handleSubtitleChange}
+            hasErrors={!!errors.subtitles}
+          />
+        </div>
       </div>
     </div>
   );

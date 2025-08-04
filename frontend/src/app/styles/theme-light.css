@@ -1,9 +1,0 @@
-
-@layer base {
-  :root {
-    --background: #ffffff; /* White */
-    --foreground: #0a0a0a; /* Nearly Black */
-    --accent: var(--color-gray-600);
-    --primary: var(--color-blue-600);
-  }
-}

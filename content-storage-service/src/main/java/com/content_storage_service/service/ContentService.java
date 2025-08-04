@@ -249,6 +249,7 @@ public class ContentService {
 
     // New method to delete content
     public Mono<Void> deleteContent(String contentId, String userId) {
+        log.info("User [{}] is attempting to delete content [{}]", userId, contentId);
         // First, verify that the content exists and belongs to the user
         return contentRepository.findByIdAndUserId(contentId, userId)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Content not found or does not belong to user")))
