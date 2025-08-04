@@ -2,6 +2,8 @@ package com.notification_service.messaging;
 
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
+
+import com.shortscreator.shared.dto.PaymentStatusUpdateV1;
 import com.shortscreator.shared.dto.VideoStatusUpdateV1;
 
 import lombok.RequiredArgsConstructor;
@@ -21,5 +23,12 @@ public class NotificationListener {
         // When a message is received, call the NotificationService to push it to the frontend.
         log.info("Received video status update for user {}: {}", update.userId(), update);
         notificationService.sendNotificationToUser(update.userId(), update);
+    }
+
+    @RabbitListener(queues = "#{appProperties.rabbitmq.queues.payments}")
+    public void handlePaymentStatusUpdate(PaymentStatusUpdateV1 update) {
+        // Handle payment status updates similarly
+        log.info("Received payment status update for user {}: {}", update.userId(), update);
+        notificationService.sendPaymentStatusUpdate(update.userId(), update);
     }
 }

@@ -1,11 +1,14 @@
-package com.notification_service.config;
+package com.payment_service.config;
 
 import lombok.Data;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 
 @Component
 @ConfigurationProperties(prefix = "app")
@@ -18,24 +21,13 @@ public class AppProperties {
     @Data
     public static class RabbitMQ {
         @NotEmpty
-        private String exchange;
         private String paymentExchange;
-        private Queues queues = new Queues();
+        @NotEmpty
         private RoutingKeys routingKeys = new RoutingKeys();
     }
 
     @Data
-    public static class Queues {
-        @NotEmpty
-        private String notifications;
-        @NotEmpty
-        private String payments;
-    }
-
-    @Data
     public static class RoutingKeys {
-        @NotEmpty
-        private String contentStatus; // e.g., "content.status"
         @NotEmpty
         private String paymentStatus; // e.g., "payment.status"
     }

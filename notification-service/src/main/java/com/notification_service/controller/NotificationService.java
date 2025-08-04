@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.shortscreator.shared.dto.PaymentStatusUpdateV1;
 import com.shortscreator.shared.dto.VideoStatusUpdateV1;
 
 @Service
@@ -71,6 +72,23 @@ public class NotificationService {
             } catch (IOException e) {
                 log.error("Failed to send notification to user {}. Removing emitter. Error: {}", userId, e.getMessage());
                 // If sending fails, the client has likely disconnected. Remove the stale emitter.
+                emitter.complete();
+                emitters.remove(userId);
+            }
+        } else {
+            log.warn("No active SSE connection found for user: {}", userId);
+        }
+    }
+
+    public void sendPaymentStatusUpdate(String userId, PaymentStatusUpdateV1 data) {
+        SseEmitter emitter = emitters.get(userId);
+        
+        if (emitter != null) {
+            try {
+                emitter.send(SseEmitter.event().name("payment_status_update").data(data));
+                log.info("Sent payment status update to user {}: {}", userId, data);
+            } catch (IOException e) {
+                log.error("Failed to send payment status update to user {}. Removing emitter. Error: {}", userId, e.getMessage());
                 emitter.complete();
                 emitters.remove(userId);
             }

@@ -31,6 +31,20 @@ services:
     ports:
       - "8080:8080"
 
+  postgres:
+    image: postgres:17.5
+    container_name: postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: payment_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persist PostgreSQL data
+
 volumes:
-  mongodb_data: # Define the named volume
-  rabbitmq_data: # Define the named volume for RabbitMQ
+  mongodb_data:
+  rabbitmq_data:
+  postgres_data:

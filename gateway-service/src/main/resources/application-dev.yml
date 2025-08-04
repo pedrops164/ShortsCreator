@@ -15,7 +15,7 @@ spring:
       server:
         webflux:
           routes:
-            # This is a unique identifier for the route to the Content Storage Service (CSS).
+            # Unique identifier for the route to the Content Storage Service (CSS).
             - id: content-storage-service-route
             
               # Requests matching the predicate will be forwarded here.
@@ -26,6 +26,9 @@ spring:
                 # This predicate matches if the request path starts with /api/v1/content.
                 # The '/**' is a wildcard that matches any subpath.
                 - Path=/api/v1/content/**
+              filters:
+                # This applies our filter that adds the X-User-ID header
+                - AddUserIdHeader
             - id: notification-service-route
             
               uri: http://localhost:8086
@@ -33,6 +36,26 @@ spring:
               predicates:
                 # This predicate matches if the request path starts with /api/v1/notifications.
                 - Path=/api/v1/notifications/**
+              filters:
+                # This applies our filter that adds the X-User-ID header
+                - AddUserIdHeader
+
+            # Route for private Payment Service endpoints
+            - id: payment-service-private
+              uri: http://localhost:8087 # Internal network address
+              predicates:
+                - Path=/api/v1/payments/**, /api/v1/balance/**, /api/v1/transactions/**
+              filters:
+                # This applies our filter that adds the X-User-ID header
+                - AddUserIdHeader
+
+            # PUBLIC route for the Stripe webhook
+            - id: payment-service-webhook-public
+              uri: http://localhost:8087 # Still points to the same internal service
+              predicates:
+                # This route ONLY matches the webhook path
+                - Path=/api/v1/stripe/webhooks
+              # There are no authentication filters on this route
           globalcors:
             cors-configurations:
               '[/**]':
@@ -46,5 +69,6 @@ spring:
                 allowed-headers:
                   - Authorization
                   - Content-Type
+                  - Stripe-Signature
                 allow-credentials: true
                 #max-age: 3600

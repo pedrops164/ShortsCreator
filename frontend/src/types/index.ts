@@ -4,3 +4,5 @@ export * from './templates/characterExplains';
 export * from './content';
 export * from './drafts';
 export * from './creation';
+export * from './balance';
+export * from './page';

@@ -14,7 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Profile("dev") // Only activates this bean when the 'local' profile is active
+@Profile("dev") // Only activates this bean when the 'dev' profile is active
 public class RabbitMqGenerationResultDispatcher implements GenerationResultDispatcher {
 
     private final RabbitTemplate rabbitTemplate;

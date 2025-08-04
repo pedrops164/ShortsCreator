@@ -31,6 +31,8 @@ public class SecurityConfig {
             .authorizeExchange(exchanges -> exchanges
                 // Permit all OPTIONS preflight requests (For CORS and other preflight checks)
                 .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll() 
+                // Allow unauthenticated access to the Stripe webhook endpoint
+                .pathMatchers("/api/v1/stripe/webhooks").permitAll()
                 // All other requests must be authenticated
                 .anyExchange().authenticated()
             )

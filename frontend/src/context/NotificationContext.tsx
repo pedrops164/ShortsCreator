@@ -2,9 +2,11 @@
 
 import React, { createContext, useEffect, useState, ReactNode, useContext } from 'react';
 import { VideoStatusUpdate } from '@/types/content';
+import { PaymentStatusUpdate } from '@/types/balance';
 
 interface NotificationContextType {
     latestVideoStatus: VideoStatusUpdate | null;
+    latestPaymentStatus: PaymentStatusUpdate | null;
     isConnected: boolean;
 }
 
@@ -12,6 +14,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const [latestVideoStatus, setLatestVideoStatus] = useState<VideoStatusUpdate | null>(null);
+    const [latestPaymentStatus, setLatestPaymentStatus] = useState<PaymentStatusUpdate | null>(null);
     const [isConnected, setIsConnected] = useState<boolean>(false);
 
     useEffect(() => {
@@ -23,14 +26,25 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             setIsConnected(true);
         };
 
-        // Listener for your specific video status updates
+        // Listener for specific video status updates
         eventSource.addEventListener('video_status_update', (event) => {
+            console.log('Received video_status_update:', event.data);
             try {
                 const data: VideoStatusUpdate = JSON.parse(event.data);
-                console.log('Received video_status_update:', data);
                 setLatestVideoStatus(data);
             } catch (error) {
                 console.error('Failed to parse video_status_update event data:', error);
+            }
+        });
+
+        // Listener for payment status updates
+        eventSource.addEventListener('payment_status_update', (event) => {
+            console.log('Received payment_status_update:', event.data);
+            try {
+                const data: PaymentStatusUpdate = JSON.parse(event.data);
+                setLatestPaymentStatus(data);
+            } catch (error) {
+                console.error('Failed to parse payment_status_update event data:', error);
             }
         });
 
@@ -52,7 +66,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         };
     }, []); // Empty dependency array ensures this runs only once
 
-    const value = { latestVideoStatus, isConnected };
+    const value = { latestVideoStatus, latestPaymentStatus, isConnected };
 
     return (
         <NotificationContext.Provider value={value}>
