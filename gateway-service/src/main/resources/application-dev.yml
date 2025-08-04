@@ -16,7 +16,7 @@ spring:
         webflux:
           routes:
             # Unique identifier for the route to the Content Storage Service (CSS).
-            - id: content-storage-service-route
+            - id: content-storage-service-content-route
             
               # Requests matching the predicate will be forwarded here.
               uri: http://localhost:8083
@@ -29,6 +29,16 @@ spring:
               filters:
                 # This applies our filter that adds the X-User-ID header
                 - AddUserIdHeader
+            - id: content-storage-service-assets-route
+              uri: http://localhost:8083
+              predicates:
+                - Path=/api/v1/assets/**
+              # There are no authentication filters on this route
+            - id: content-storage-service-presets-route
+              uri: http://localhost:8083
+              predicates:
+                - Path=/api/v1/presets/**
+              # There are no authentication filters on this route
             - id: notification-service-route
             
               uri: http://localhost:8086

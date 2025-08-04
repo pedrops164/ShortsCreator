@@ -16,21 +16,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import Image from 'next/image';
 import { SubtitleOptions } from './customization/SubtitleOptions';
 import { VideoCustomization } from './customization/VideoCustomization';
-
-// --- Type Definitions ---
-interface Character {
-  id: string;
-  name: string;
-  avatar: string;
-  color: string;
-}
-
-interface CharacterPreset {
-  id: string;
-  name: string;
-  characters: Character[];
-  thumbnail: string;
-}
+import { CharacterPreset } from '@/types';
+import apiClient from '@/lib/apiClient';
 
 interface DialogueLine {
   characterId: string;
@@ -46,29 +33,9 @@ interface EditorProps {
   isSubmitting: boolean;
 }
 
-// --- Mock Data ---
-const PRESETS: CharacterPreset[] = [
-  {
-    id: 'peter_stewie', name: 'Peter & Stewie',
-    characters: [
-      { id: 'peter', name: 'Peter Griffin', avatar: '/character_images/peter.png', color: '#3b82f6' },
-      { id: 'stewie', name: 'Stewie Griffin', avatar: '/character_images/stewie.png', color: '#ef4444' }
-    ],
-    thumbnail: '/preset_thumbnails/peter_stewie.png'
-  },
-  {
-    id: 'rick_morty', name: 'Rick & Morty',
-    characters: [
-      { id: 'rick', name: 'Rick Sanchez', avatar: '/character_images/rick.png', color: '#2dd4bf' },
-      { id: 'morty', name: 'Morty Smith', avatar: '/character_images/morty.png', color: '#facc15' },
-    ],
-    thumbnail: '/preset_thumbnails/rick_morty.png',
-  },
-];
-
 // --- Default values for a new draft ---
 const defaultParams: CharacterExplainsParams = {
-  characterPresetId: '',
+  characterPresetId: undefined,
   topicTitle: '',
   dialogue: [],
   backgroundVideoId: 'minecraft1',
@@ -81,13 +48,15 @@ const validate = (params: CharacterExplainsParams): Record<string, any> => {
   const errors: Record<string, any> = {};
   if (!params.characterPresetId) errors.characterPresetId = 'A character preset must be selected.';
   if (!params.topicTitle?.trim() || params.topicTitle.length < 3) errors.topicTitle = 'Topic Title must be at least 3 characters.';
-  if (params.dialogue.length === 0) errors.dialogue = 'Dialogue script cannot be empty.';
+  if (params.dialogue?.length === 0) errors.dialogue = 'Dialogue script cannot be empty.';
   if (!params.backgroundVideoId) errors.backgroundVideoId = 'A background video must be selected.';
   return errors;
 };
 
 // --- Main Editor Component ---
 export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSaving, isSubmitting }: EditorProps) {
+  const [presets, setPresets] = useState<CharacterPreset[]>([]);
+  const [presetsLoading, setPresetsLoading] = useState(true);
   const [params, setParams] = useState<CharacterExplainsParams>({
     ...defaultParams,
     ...initialData.templateParams,
@@ -104,9 +73,26 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Memoize the active preset and characters for efficiency
-  const activePreset = useMemo(() => PRESETS.find(p => p.id === params.characterPresetId), [params.characterPresetId]);
-  
+  const activePreset = useMemo(() => presets.find(p => p.presetId === params.characterPresetId), [params.characterPresetId, presets]);
+
   // --- Effects ---
+
+
+  // --- FETCH PRESETS ---
+  useEffect(() => {
+    async function fetchPresets() {
+      try {
+        const response = await apiClient.get<CharacterPreset[]>('/presets/characters');
+        setPresets(response.data);
+        console.log("Fetched presets:", response.data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setPresetsLoading(false);
+      }
+    }
+    fetchPresets();
+  }, []);
 
   // Scroll dialogue to bottom on new line
   useEffect(() => {
@@ -118,18 +104,18 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
   // Set the default active speaker when the preset changes
   useEffect(() => {
     if (activePreset && activePreset.characters.length > 0) {
-      if (!activeSpeakerId || !activePreset.characters.some(c => c.id === activeSpeakerId)) {
-        setActiveSpeakerId(activePreset.characters[0].id);
+      if (!activeSpeakerId || !activePreset.characters.some(c => c.characterId === activeSpeakerId)) {
+        setActiveSpeakerId(activePreset.characters[0].characterId);
       }
     } else {
       setActiveSpeakerId('');
     }
-  }, [activePreset, activeSpeakerId]);
+  }, [activePreset]);
 
   // --- Handlers ---
   
   const handlePresetSelect = (preset: CharacterPreset) => {
-    setParams(p => ({ ...p, characterPresetId: preset.id, dialogue: [] })); // Reset dialogue on preset change
+    setParams(p => ({ ...p, characterPresetId: preset.presetId, dialogue: [] })); // Reset dialogue on preset change
     if (errors.characterPresetId) {
         setErrors(currentErrors => {
             const { characterPresetId, ...rest } = currentErrors;
@@ -153,9 +139,9 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
 
     // Auto-alternate speaker
     if (activePreset) {
-      const currentIndex = activePreset.characters.findIndex(c => c.id === activeSpeakerId);
+      const currentIndex = activePreset.characters.findIndex(c => c.characterId === activeSpeakerId);
       const nextIndex = (currentIndex + 1) % activePreset.characters.length;
-      setActiveSpeakerId(activePreset.characters[nextIndex].id);
+      setActiveSpeakerId(activePreset.characters[nextIndex].characterId);
     }
     textareaRef.current?.focus();
   };
@@ -199,7 +185,17 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
     }
   };
 
-  const getCharacterById = (id: string) => activePreset?.characters.find(c => c.id === id);
+  const getCharacterById = (id: string) => activePreset?.characters.find(c => c.characterId === id);
+
+  // --- RENDER A LOADING STATE ---
+  if (presetsLoading) {
+    return (
+        <div className="flex justify-center items-center h-screen">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="ml-4 text-xl">Loading Editor...</span>
+        </div>
+    );
+  }
 
   return (
     <div className="bg-background min-h-screen p-4 md:p-6 lg:p-8">
@@ -254,9 +250,9 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
                 <div>
                   <Label className="font-semibold">Character Preset *</Label>
                   <div className="grid grid-cols-1 gap-3 mt-2">
-                    {PRESETS.map(preset => (
+                    {presets.map(preset => (
                       <div key={preset.id} onClick={() => handlePresetSelect(preset)}
-                        className={`relative cursor-pointer rounded-lg border-2 p-3 transition-all ${params.characterPresetId === preset.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                        className={`relative cursor-pointer rounded-lg border-2 p-3 transition-all ${params.characterPresetId === preset.presetId ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
                         <div className="flex items-center space-x-4">
                           <div className="flex-1 flex items-center justify-between">
                             <div className="flex items-center space-x-3">
@@ -264,8 +260,8 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
                                 <div className="flex -space-x-2">
                                     {preset.characters.map(char => (
                                         <Image
-                                            key={char.id}
-                                            src={char.avatar}
+                                            key={char.characterId}
+                                            src={char.avatarUrl}
                                             alt={char.name}
                                             width={48}
                                             height={48}
@@ -275,7 +271,7 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
                                 </div>
                             </div>
                           </div>
-                          {params.characterPresetId === preset.id && <Badge>Selected</Badge>}
+                          {params.characterPresetId === preset.presetId && <Badge>Selected</Badge>}
                         </div>
                       </div>
                     ))}
@@ -331,10 +327,10 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
                       const character = getCharacterById(line.characterId);
                       return (
                         <div key={index} className="flex items-start space-x-3 group">
-                          <Image src={character?.avatar || ''} alt={character?.name || ''} width={32} height={32} className="w-8 h-8 rounded-full flex-shrink-0 mt-1" />
+                          <Image src={character?.avatarUrl || ''} alt={character?.name || ''} width={32} height={32} className="w-8 h-8 rounded-full flex-shrink-0 mt-1" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm font-bold" style={{ color: character?.color }}>{character?.name}</span>
+                              <span className="text-sm font-bold" >{character?.name}</span>
                                <Button variant="ghost" size="sm" onClick={() => removeDialogueLine(index)} className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-destructive">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
@@ -358,9 +354,9 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
                            </SelectTrigger>
                            <SelectContent>
                              {activePreset.characters.map(char => (
-                               <SelectItem key={char.id} value={char.id}>
+                               <SelectItem key={char.characterId} value={char.characterId}>
                                  <div className="flex items-center space-x-2">
-                                   <Image src={char.avatar} alt={char.name} width={20} height={20} className="w-5 h-5 rounded-full" />
+                                   <Image src={char.avatarUrl} alt={char.name} width={20} height={20} className="w-5 h-5 rounded-full" />
                                    <span>{char.name}</span>
                                  </div>
                                </SelectItem>

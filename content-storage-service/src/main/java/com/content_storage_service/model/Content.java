@@ -13,7 +13,6 @@ import com.shortscreator.shared.dto.OutputAssetsV1;
 import com.shortscreator.shared.enums.ContentStatus; // Enum for content status
 import java.time.Instant;
 
-// Lombok annotations for conciseness
 @Data // Generates getters, setters, equals, hashCode, toString
 @NoArgsConstructor // Generates a no-args constructor
 @SuperBuilder // Required for builder pattern on abstract classes

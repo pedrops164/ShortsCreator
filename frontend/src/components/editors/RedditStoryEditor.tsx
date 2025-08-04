@@ -39,7 +39,7 @@ const defaultParams: RedditStoryParams = {
   subtitles: {
     show: true,
     color: '#FFFFFF',
-    font: 'Roboto',
+    font: 'Arial',
     position: 'bottom',
   },
   voiceSelection: '',

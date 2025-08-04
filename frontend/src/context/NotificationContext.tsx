@@ -19,7 +19,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         // URL to the SSE endpoint, handled by the API gateway
-        const eventSource = new EventSource('/api/notifications');
+        const eventSource = new EventSource('/api/v1/notifications');
 
         eventSource.onopen = () => {
             console.log('SSE connection established.');

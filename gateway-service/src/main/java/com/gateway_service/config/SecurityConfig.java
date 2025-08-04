@@ -33,6 +33,8 @@ public class SecurityConfig {
                 .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll() 
                 // Allow unauthenticated access to the Stripe webhook endpoint
                 .pathMatchers("/api/v1/stripe/webhooks").permitAll()
+                .pathMatchers("/api/v1/assets/**").permitAll()
+                .pathMatchers("/api/v1/presets/**").permitAll()
                 // All other requests must be authenticated
                 .anyExchange().authenticated()
             )

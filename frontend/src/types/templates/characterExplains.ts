@@ -5,7 +5,7 @@ export type CharacterExplainsParams = {
     characterId: string; // Required within a dialogue line object
     text: string; // Required within a dialogue line object
   }>;
-  backgroundVideoId?: 'minecraft1' | 'gta1'; // Not required by schema (until submission)
+  backgroundVideoId?: 'minecraft1' | 'subway_surfers1'; // Not required by schema (until submission)
   backgroundMusicId?: '' | 'fun_1' | 'mysterious_1'; // Optional
   aspectRatio?: '9:16'; // Not required by schema, has a default
   subtitles?: {
