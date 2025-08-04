@@ -1,14 +1,37 @@
 'use client';
 
-import { useState, ChangeEvent, useMemo, useEffect, useRef } from 'react';
-import { CharacterExplainsDraft, CharacterExplainsParams } from '@/types';
-import { PlusCircle, Send, Trash2, AlertCircle } from 'lucide-react';
-import { FormField, FormSection } from '@/components/editors/customization/common';
-import Image from 'next/image'; // For displaying character images
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { CharacterExplainsDraft, CharacterExplainsParams } from '@/types'; // Assuming types are in @/types
+import {
+  Save, Send, Plus, Trash2, AlertCircle, Users, MessageSquare, ArrowLeft, Loader2
+} from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import Image from 'next/image';
 import { SubtitleOptions } from './customization/SubtitleOptions';
-import { VideoOptions } from './customization/VideoOptions';
+import { VideoCustomization } from './customization/VideoCustomization';
 
 // --- Type Definitions ---
+interface Character {
+  id: string;
+  name: string;
+  avatar: string;
+  color: string;
+}
+
+interface CharacterPreset {
+  id: string;
+  name: string;
+  characters: Character[];
+  thumbnail: string;
+}
+
 interface DialogueLine {
   characterId: string;
   text: string;
@@ -20,87 +43,146 @@ interface EditorProps {
   onSave: (data: CharacterExplainsDraft) => void;
   onSubmit: (data: CharacterExplainsDraft) => void;
   isSaving: boolean;
+  isSubmitting: boolean;
 }
+
+// --- Mock Data ---
+const PRESETS: CharacterPreset[] = [
+  {
+    id: 'peter_stewie', name: 'Peter & Stewie',
+    characters: [
+      { id: 'peter', name: 'Peter Griffin', avatar: '/character_images/peter.png', color: '#3b82f6' },
+      { id: 'stewie', name: 'Stewie Griffin', avatar: '/character_images/stewie.png', color: '#ef4444' }
+    ],
+    thumbnail: '/preset_thumbnails/peter_stewie.png'
+  },
+  {
+    id: 'rick_morty', name: 'Rick & Morty',
+    characters: [
+      { id: 'rick', name: 'Rick Sanchez', avatar: '/character_images/rick.png', color: '#2dd4bf' },
+      { id: 'morty', name: 'Morty Smith', avatar: '/character_images/morty.png', color: '#facc15' },
+    ],
+    thumbnail: '/preset_thumbnails/rick_morty.png',
+  },
+];
 
 // --- Default values for a new draft ---
 const defaultParams: CharacterExplainsParams = {
-  characterPresetId: 'peter_stewie',
+  characterPresetId: '',
   topicTitle: '',
   dialogue: [],
   backgroundVideoId: 'minecraft1',
   aspectRatio: '9:16',
-  subtitles: {
-    show: true,
-    color: '#FFFFFF',
-    font: 'Arial',
-    position: 'bottom',
-  },
+  subtitles: { show: true, color: '#FFFFFF', font: 'Arial', position: 'bottom' },
 };
-
-const PRESETS = [
-    { id: 'peter_stewie', name: 'Peter & Stewie Griffin', images: ['/character_images/peter.png', '/character_images/stewie.png'] },
-    { id: 'rick_morty', name: 'Rick Sanchez & Morty Smith', images: ['/character_images/rick.png', '/character_images/morty.png'] },
-];
 
 // --- Validation Logic ---
 const validate = (params: CharacterExplainsParams): Record<string, any> => {
   const errors: Record<string, any> = {};
-
-  if (!params.topicTitle?.trim()) errors.topicTitle = 'Topic Title is required.';
-  else if (params.topicTitle.length < 3) errors.topicTitle = 'Topic Title must be at least 3 characters.';
-
   if (!params.characterPresetId) errors.characterPresetId = 'A character preset must be selected.';
-  if (params.dialogue.length === 0) errors.dialogue = 'Dialogue cannot be empty.';
-  if (!params.backgroundVideoId) errors.backgroundVideoId = 'Background video is required.';
-
-  // Nested validation for subtitles
-  if (params.subtitles?.show) {
-    if (!params.subtitles.font?.trim()) {
-      errors.subtitles = { ...errors.subtitles, font: 'Subtitle font is required.' };
-    }
-    if (!/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(params.subtitles.color)) {
-      errors.subtitles = { ...errors.subtitles, color: 'Must be a valid hex color.' };
-    }
-  }
-
+  if (!params.topicTitle?.trim() || params.topicTitle.length < 3) errors.topicTitle = 'Topic Title must be at least 3 characters.';
+  if (params.dialogue.length === 0) errors.dialogue = 'Dialogue script cannot be empty.';
+  if (!params.backgroundVideoId) errors.backgroundVideoId = 'A background video must be selected.';
   return errors;
 };
 
-
 // --- Main Editor Component ---
-export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSaving }: EditorProps) {
+export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSaving, isSubmitting }: EditorProps) {
   const [params, setParams] = useState<CharacterExplainsParams>({
     ...defaultParams,
     ...initialData.templateParams,
-    subtitles: { // Ensure subtitles object is fully formed
-      ...defaultParams.subtitles,
-      ...initialData.templateParams?.subtitles,
-    }
+    subtitles: { ...defaultParams.subtitles, ...initialData.templateParams?.subtitles },
   });
-  const [errors, setErrors] = useState<Record<string, any>>({});
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setParams(prev => ({ ...prev, [name]: value }));
+  const [errors, setErrors] = useState<Record<string, any>>({});
+  
+  // Local state for the dialogue input form
+  const [newDialogueText, setNewDialogueText] = useState('');
+  const [activeSpeakerId, setActiveSpeakerId] = useState<string>('');
+
+  const dialogueScrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Memoize the active preset and characters for efficiency
+  const activePreset = useMemo(() => PRESETS.find(p => p.id === params.characterPresetId), [params.characterPresetId]);
+  
+  // --- Effects ---
+
+  // Scroll dialogue to bottom on new line
+  useEffect(() => {
+    if (dialogueScrollRef.current) {
+      dialogueScrollRef.current.scrollTop = dialogueScrollRef.current.scrollHeight;
+    }
+  }, [params.dialogue]);
+
+  // Set the default active speaker when the preset changes
+  useEffect(() => {
+    if (activePreset && activePreset.characters.length > 0) {
+      if (!activeSpeakerId || !activePreset.characters.some(c => c.id === activeSpeakerId)) {
+        setActiveSpeakerId(activePreset.characters[0].id);
+      }
+    } else {
+      setActiveSpeakerId('');
+    }
+  }, [activePreset, activeSpeakerId]);
+
+  // --- Handlers ---
+  
+  const handlePresetSelect = (preset: CharacterPreset) => {
+    setParams(p => ({ ...p, characterPresetId: preset.id, dialogue: [] })); // Reset dialogue on preset change
+    if (errors.characterPresetId) {
+        setErrors(currentErrors => {
+            const { characterPresetId, ...rest } = currentErrors;
+            return rest;
+        });
+    }
   };
   
-  // Handler for nested subtitle changes
-  const handleSubtitleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    const isCheckbox = type === 'checkbox';
-    const checkedValue = isCheckbox ? (e.target as HTMLInputElement).checked : null;
-    
-    setParams(prev => ({
-      ...prev,
-      subtitles: {
-        ...prev.subtitles,
-        [name]: isCheckbox ? checkedValue : value,
-      }
-    }));
+  const addDialogueLine = () => {
+    if (!newDialogueText.trim() || !activeSpeakerId) return;
+    const newLine: DialogueLine = { characterId: activeSpeakerId, text: newDialogueText.trim() };
+    setParams(p => ({ ...p, dialogue: [...p.dialogue, newLine] }));
+    setNewDialogueText('');
+
+    if (errors.dialogue) {
+        setErrors(currentErrors => {
+            const { dialogue, ...rest } = currentErrors;
+            return rest;
+        });
+    }
+
+    // Auto-alternate speaker
+    if (activePreset) {
+      const currentIndex = activePreset.characters.findIndex(c => c.id === activeSpeakerId);
+      const nextIndex = (currentIndex + 1) % activePreset.characters.length;
+      setActiveSpeakerId(activePreset.characters[nextIndex].id);
+    }
+    textareaRef.current?.focus();
   };
 
-  const handleDialogueChange = (newDialogue: DialogueLine[]) => {
-    setParams(prev => ({ ...prev, dialogue: newDialogue }));
+  const removeDialogueLine = (indexToRemove: number) => {
+    setParams(p => ({ ...p, dialogue: p.dialogue.filter((_, index) => index !== indexToRemove) }));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addDialogueLine();
+    }
+  };
+
+  const handleFormChange = (field: keyof CharacterExplainsParams, value: any) => {
+    setParams(p => ({ ...p, [field]: value }));
+    if (errors[field]) {
+      setErrors(currentErrors => {
+        const { [field]: removedError, ...rest } = currentErrors;
+        return rest;
+      });
+    }
+  };
+
+  const handleSubtitleChange = (field: keyof NonNullable<CharacterExplainsParams['subtitles']>, value: any) => {
+    setParams(p => ({ ...p, subtitles: { ...p.subtitles, [field]: value } }));
   };
 
   const handleSave = () => {
@@ -110,204 +192,197 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
   const handleSubmit = () => {
     const validationErrors = validate(params);
     setErrors(validationErrors);
-    
     if (Object.keys(validationErrors).length === 0) {
       onSubmit({ ...initialData, templateParams: params });
     } else {
-      console.log('Validation failed:', validationErrors);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  const speakers = useMemo(() => {
-      if (!params.characterPresetId) return [];
-      const preset = PRESETS.find(p => p.id === params.characterPresetId);
-      if (!preset) return [];
-      
-      // Create a more detailed speakers object array
-      return preset.id.split('_').map((id, index) => ({
-        id: id,
-        name: preset.name, // Keep name for alt text
-        image: preset.images[index]
-      }));
-  }, [params.characterPresetId]);
+  const getCharacterById = (id: string) => activePreset?.characters.find(c => c.id === id);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-primary">Character Explains Editor</h2>
-          <p className="text-accent mt-1">Write a script for your characters to perform.</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <button onClick={handleSave} disabled={isSaving} className="bg-accent/20 text-foreground font-semibold py-2 px-4 rounded-lg hover:bg-accent/40 transition-colors disabled:opacity-50">
-            {isSaving ? 'Saving...' : 'Save Draft'}
-          </button>
-          <button onClick={handleSubmit} className="flex items-center gap-2 bg-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-primary/90 transition-colors">
-            <Send size={16} />
-            Submit for Generation
-          </button>
-        </div>
-      </div>
-      
-      {Object.keys(errors).length > 0 && (
-         <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
-          <div className="flex items-center gap-2 font-semibold"><AlertCircle size={20} />Please fix the following errors:</div>
-          <ul className="list-disc pl-10 mt-2 text-sm">
-            {Object.entries(errors).map(([key, value]) => (
-                typeof value === 'string' ? <li key={key}>{value}</li> :
-                Object.values(value).map((err, i) => <li key={`${key}-${i}`}>{err as string}</li>)
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <FormSection title="Video Topic">
-        <CharacterPresetSelector selectedId={params.characterPresetId} onSelect={id => setParams(p => ({ ...p, characterPresetId: id, dialogue: [] }))} />
-        {errors.characterPresetId && <p className="text-red-500 text-xs mt-1">{errors.characterPresetId}</p>}
-        <FormField label="Topic Title" name="topicTitle" value={params.topicTitle} onChange={handleChange} error={errors.topicTitle} />
-      </FormSection>
-
-      <FormSection title="Dialogue Script">
-        <DialogueManager 
-            initialDialogue={params.dialogue} 
-            onUpdate={handleDialogueChange} 
-            speakers={speakers}
-            error={errors.dialogue}
-        />
-      </FormSection>
-
-      {/* Video customization */}
-      <VideoOptions>
-        <VideoOptions.BackgroundVideo 
-          value={params.backgroundVideoId} 
-          onChange={handleChange} 
-          error={errors.backgroundVideoId} 
-        />
-      </VideoOptions>
-
-      {/* Subtitle component */}
-      <SubtitleOptions params={params.subtitles} errors={errors.subtitles} onChange={handleSubtitleChange} />
-      
-    </div>
-  );
-}
-
-
-// Template-Specific Components
-
-function CharacterPresetSelector({ selectedId, onSelect }: { selectedId: string; onSelect: (id: string) => void }) {
-    return (
-      <div>
-        <label className="block text-sm font-medium text-foreground/80 mb-2">Character Preset</label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {PRESETS.map(preset => (
-                <div key={preset.id} onClick={() => onSelect(preset.id)}
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedId === preset.id ? 'border-primary shadow-lg' : 'border-accent/50 hover:border-primary/50'}`}>
-                    <div className="flex items-center gap-4">
-                        <div className="flex -space-x-4">
-                            {preset.images.map(src => (
-                                <Image key={src} src={src} alt={preset.name} width={48} height={48} className="w-12 h-12 rounded-full border-2 border-background" />
-                            ))}
-                        </div>
-                        <span className="font-semibold text-foreground">{preset.name}</span>
-                    </div>
-                </div>
-            ))}
-        </div>
-      </div>
-    );
-}
-
-function DialogueManager({ initialDialogue, onUpdate, speakers, error }: {
-  initialDialogue: DialogueLine[];
-  onUpdate: (dialogue: DialogueLine[]) => void;
-  speakers: { id: string; name: string; image: string; }[];
-  error?: string
-}) {
-  const [newLine, setNewLine] = useState({ characterId: speakers[0]?.id || '', text: '' });
-
-  // Ref for the scrollable container. This is used to scroll to the bottom when a new line is added.
-  const dialogueContainerRef = useRef<HTMLDivElement>(null);
-  
-  // When the speakers change, reset the selected character in the 'add new' form.
-  useEffect(() => {
-    setNewLine(p => ({ ...p, characterId: speakers[0]?.id || '' }));
-  }, [speakers]);
-
-  // useEffect hook to scroll down when dialogue changes
-  useEffect(() => {
-    if (dialogueContainerRef.current) {
-      const { scrollHeight } = dialogueContainerRef.current;
-      dialogueContainerRef.current.scrollTo({ top: scrollHeight, behavior: 'smooth' });
-    }
-  }, [initialDialogue]);
-
-  const addLine = () => {
-    if (newLine.text.trim() === '') return;
-    onUpdate([...initialDialogue, newLine]);
-
-    // Automatic Speaker Switching Logic
-    // Find the other speaker to alternate speakers.
-    const otherSpeaker = speakers.find(s => s.id !== newLine.characterId);
-
-    // Reset the form, switching to the other speaker if found.
-    setNewLine({
-      characterId: otherSpeaker?.id || speakers[0]?.id || '',
-      text: ''
-    });
-  };
-
-  const removeLine = (indexToRemove: number) => {
-    onUpdate(initialDialogue.filter((_, index) => index !== indexToRemove));
-  };
-  
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      addLine();
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      <div ref={dialogueContainerRef} className="space-y-2 max-h-96 overflow-y-auto pr-2">
-        {initialDialogue.map((line, index) => {
-          const speaker = speakers.find(s => s.id === line.characterId);
-          return (
-            <div key={index} className="flex items-start gap-3 p-2 rounded bg-background/50">
-              {/* Show speaker image */}
-              {speaker && <Image src={speaker.image} alt={speaker.id} width={32} height={32} className="w-8 h-8 rounded-full border-2 border-accent" />}
-              <div className="flex-1">
-                <p className="whitespace-pre-wrap text-sm text-accent">{line.text}</p>
-              </div>
-              <button onClick={() => removeLine(index)} className="p-1 text-red-500 hover:text-red-400">
-                <Trash2 size={16} />
-              </button>
+    <div className="bg-background min-h-screen p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex flex-wrap gap-4 items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" size="icon" asChild>
+              <a href="/dashboard/content"><ArrowLeft className="h-5 w-5" /></a>
+            </Button>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Character Explains Editor</h1>
+              <p className="text-muted-foreground mt-1">Craft a dialogue video with your selected characters.</p>
             </div>
-          );
-        })}
-      </div>
-      <div className="flex items-end gap-2 p-2 border-t border-accent/30 pt-4">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-foreground/80">Speaker</label>
-          <div className="flex items-center gap-2">
-            {speakers.map(speaker => (
-              <button key={speaker.id} onClick={() => setNewLine(p => ({...p, characterId: speaker.id}))}
-                      className={`rounded-full transition-all ring-offset-background ring-offset-2 ${newLine.characterId === speaker.id ? 'ring-2 ring-primary' : 'ring-0 hover:ring-2 ring-primary/50'}`}>
-                <Image src={speaker.image} alt={speaker.id} width={40} height={40} className="w-10 h-10 rounded-full" />
-              </button>
-            ))}
+          </div>
+          <div className="flex items-center space-x-3">
+            <Button variant="outline" onClick={handleSave} disabled={isSaving || isSubmitting}>
+              {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Save Draft
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting || isSaving}>
+              {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+              Submit for Generation
+            </Button>
           </div>
         </div>
-        <div className="flex-1">
-            <label className="block text-sm font-medium text-foreground/80 mb-1">Dialogue Text (Shift+Enter for new line)</label>
-            <textarea value={newLine.text} onChange={e => setNewLine(p => ({...p, text: e.target.value}))} onKeyDown={handleKeyDown}
-                    className="block w-full bg-background/50 border rounded-md p-2 focus:ring-primary/50 border-accent" rows={2}/>
+
+        {/* Validation Errors */}
+        {Object.keys(errors).length > 0 && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+                <div className="font-semibold mb-2">Please fix the following issues:</div>
+                <ul className="list-disc list-inside space-y-1">
+                    {Object.values(errors).filter(v => v).map((errorMsg, index) => (
+                        <li key={index}>{errorMsg}</li>
+                    ))}
+                </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="grid lg:grid-cols-2 gap-8 items-start">
+          {/* Left Column: Setup & Customization */}
+          <div className="space-y-6">
+            <Card className={errors.characterPresetId || errors.topicTitle ? 'border-destructive' : ''}>
+              <CardHeader>
+                <CardTitle className="flex items-center"><Users className="h-5 w-5 mr-2" />Video Setup</CardTitle>
+                <CardDescription>Choose your characters and give your video a title.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <Label className="font-semibold">Character Preset *</Label>
+                  <div className="grid grid-cols-1 gap-3 mt-2">
+                    {PRESETS.map(preset => (
+                      <div key={preset.id} onClick={() => handlePresetSelect(preset)}
+                        className={`relative cursor-pointer rounded-lg border-2 p-3 transition-all ${params.characterPresetId === preset.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                        <div className="flex items-center space-x-4">
+                          <div className="flex-1 flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                                <h3 className="font-medium text-foreground">{preset.name}</h3>
+                                <div className="flex -space-x-2">
+                                    {preset.characters.map(char => (
+                                        <Image
+                                            key={char.id}
+                                            src={char.avatar}
+                                            alt={char.name}
+                                            width={48}
+                                            height={48}
+                                            className="w-12 h-12 rounded-full border-2 border-background"
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                          </div>
+                          {params.characterPresetId === preset.id && <Badge>Selected</Badge>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {errors.characterPresetId && <p className="text-sm text-destructive mt-2">{errors.characterPresetId}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="topic-title" className="font-semibold">Topic Title *</Label>
+                  <Input id="topic-title" placeholder="e.g., Why Pineapple on Pizza is Great"
+                    value={params.topicTitle} onChange={(e) => handleFormChange('topicTitle', e.target.value)}
+                    className={errors.topicTitle ? 'border-destructive' : ''} />
+                  {errors.topicTitle && <p className="text-sm text-destructive">{errors.topicTitle}</p>}
+                </div>
+              </CardContent>
+            </Card>
+
+            <VideoCustomization>
+              <VideoCustomization.BackgroundVideo
+                  value={params.backgroundVideoId}
+                  onChange={(value) => handleFormChange('backgroundVideoId', value)}
+                  error={errors.backgroundVideoId}
+              />
+            </VideoCustomization>
+
+            <SubtitleOptions
+                value={params.subtitles}
+                onChange={handleSubtitleChange}
+                hasErrors={!!errors.subtitles}
+            />
+
+          </div>
+
+
+          {/* Right Column: Dialogue Scripting */}
+          <div className="space-y-6 lg:sticky top-8">
+            <Card className={errors.dialogue ? 'border-destructive' : ''}>
+              <CardHeader>
+                <CardTitle className="flex items-center"><MessageSquare className="h-5 w-5 mr-2" />Dialogue Script *</CardTitle>
+                <CardDescription>
+                  Write the conversation. Press Enter to add a line, or Shift+Enter for a new line in the text.
+                  {errors.dialogue && <p className="text-destructive font-medium mt-1">{errors.dialogue}</p>}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div ref={dialogueScrollRef} className="h-80 overflow-y-auto border rounded-lg p-3 bg-muted/30 space-y-4">
+                  {params.dialogue.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-12">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>{activePreset ? 'Start writing your script below!' : 'Select a character preset to begin.'}</p>
+                    </div>
+                  ) : (
+                    params.dialogue.map((line, index) => {
+                      const character = getCharacterById(line.characterId);
+                      return (
+                        <div key={index} className="flex items-start space-x-3 group">
+                          <Image src={character?.avatar || ''} alt={character?.name || ''} width={32} height={32} className="w-8 h-8 rounded-full flex-shrink-0 mt-1" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-bold" style={{ color: character?.color }}>{character?.name}</span>
+                               <Button variant="ghost" size="sm" onClick={() => removeDialogueLine(index)} className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-destructive">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                            <p className="text-sm text-foreground whitespace-pre-wrap">{line.text}</p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {activePreset && (
+                  <div className="mt-4 pt-4 border-t space-y-4">
+                    <div className="grid grid-cols-2 gap-4 items-end">
+                       <div className="space-y-2">
+                         <Label className="text-sm font-medium">Speaker</Label>
+                         <Select value={activeSpeakerId} onValueChange={setActiveSpeakerId}>
+                           <SelectTrigger>
+                             <SelectValue placeholder="Select a speaker" />
+                           </SelectTrigger>
+                           <SelectContent>
+                             {activePreset.characters.map(char => (
+                               <SelectItem key={char.id} value={char.id}>
+                                 <div className="flex items-center space-x-2">
+                                   <Image src={char.avatar} alt={char.name} width={20} height={20} className="w-5 h-5 rounded-full" />
+                                   <span>{char.name}</span>
+                                 </div>
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                       </div>
+                       <Button onClick={addDialogueLine} disabled={!newDialogueText.trim() || !activeSpeakerId}>
+                         <Plus className="h-4 w-4 mr-2" /> Add Dialogue
+                       </Button>
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="dialogue-text">Dialogue Text</Label>
+                        <Textarea ref={textareaRef} id="dialogue-text" placeholder={`Type what ${getCharacterById(activeSpeakerId)?.name || '...'} says`}
+                          value={newDialogueText} onChange={(e) => setNewDialogueText(e.target.value)} onKeyDown={handleKeyDown} rows={3} className="resize-none" />
+                      </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
-        <button onClick={addLine} className="bg-accent/30 hover:bg-accent/50 text-foreground p-2 rounded-md h-[42px]">
-          <PlusCircle size={20} />
-        </button>
       </div>
     </div>
   );

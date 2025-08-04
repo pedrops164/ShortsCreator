@@ -1,105 +1,107 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Banknote, CheckCircle, XCircle, Clock, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { Page, PaymentTransactionResponse } from '@/types';
-import { useNotifications } from '@/context/NotificationContext'; // <-- Import the hook
+import { useNotifications } from '@/context/NotificationContext';
 
-const StatusBadge = ({ status }: { status: string }) => {
-  const statusStyles = {
-    COMPLETED: 'bg-green-100 text-green-800 border-green-200',
-    PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    FAILED: 'bg-red-100 text-red-800 border-red-200',
-    REFUNDED: 'bg-blue-100 text-blue-800 border-blue-200',
-    DISPUTED: 'bg-orange-100 text-orange-800 border-orange-200',
-  };
-  const statusIcons = {
-    COMPLETED: <CheckCircle className="w-4 h-4" />,
-    PENDING: <Clock className="w-4 h-4" />,
-    FAILED: <XCircle className="w-4 h-4" />,
-    REFUNDED: <Banknote className="w-4 h-4" />,
-    DISPUTED: <AlertTriangle className="w-4 h-4" />,
-  };
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium border rounded-full ${statusStyles[status] || 'bg-gray-100 text-gray-800'}`}>
-      {statusIcons[status]}
-      {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}
-    </span>
-  );
+// UI Components from shadcn/ui and lucide-react
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CreditCard, Plus, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+
+// --- Helper Functions for Styling ---
+
+/**
+ * Returns a variant string for the Badge component based on transaction status.
+ */
+const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  switch (status) {
+    case 'COMPLETED':
+      return 'default'; // Green in default themes
+    case 'PENDING':
+      return 'secondary'; // Yellowish/Gray
+    case 'FAILED':
+      return 'destructive'; // Red
+    case 'REFUNDED':
+    case 'DISPUTED':
+      return 'outline'; // Blue/Orange border
+    default:
+      return 'secondary';
+  }
 };
 
-const TransactionRow = ({ transaction }: { transaction: PaymentTransactionResponse }) => {
-  const formattedDate = new Date(transaction.createdAt).toLocaleString('pt-PT', {
-    year: 'numeric', month: 'long', day: 'numeric',
+/**
+ * Formats an ISO date string to a locale-specific, readable format.
+ */
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleString('pt-PT', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
-  const amount = (transaction.amountPaid / 100).toFixed(2);
+};
+
+// --- Sub-components ---
+
+const PaginationControls = ({ page, onPageChange }: { page: Page<any>, onPageChange: (newPage: number) => void }) => {
+  if (page.totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-between py-4 border-b border-accent/20">
-      <div className="flex items-center gap-4">
-        <div className="p-2 rounded-full bg-accent/10">
-          <Banknote className="w-5 h-5 text-accent" />
-        </div>
-        <div>
-          <p className="font-semibold text-foreground">Balance Top-up</p>
-          <p className="text-sm text-accent">{formattedDate}</p>
-        </div>
-      </div>
-      <div className="text-right">
-        <p className="font-semibold text-green-400">+ ${amount} {transaction.currency}</p>
-        <StatusBadge status={transaction.status} />
-      </div>
+    <div className="flex items-center justify-between pt-4 mt-4 border-t">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onPageChange(page.number - 1)}
+        disabled={page.first}
+      >
+        <ChevronLeft className="w-4 h-4 mr-1" />
+        Previous
+      </Button>
+      <span className="text-sm text-muted-foreground">
+        Page {page.number + 1} of {page.totalPages}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onPageChange(page.number + 1)}
+        disabled={page.last}
+      >
+        Next
+        <ChevronRight className="w-4 h-4 ml-1" />
+      </Button>
     </div>
   );
 };
 
-const PaginationControls = ({ page, onPageChange }: { page: Page<any>, onPageChange: (newPage: number) => void }) => {
-    if (page.totalPages <= 1) return null;
-    return (
-        <div className="flex items-center justify-between pt-4">
-            <button
-                onClick={() => onPageChange(page.number - 1)}
-                disabled={page.first}
-                className="flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-md disabled:opacity-50 disabled:cursor-not-allowed bg-accent/20 hover:bg-accent/30"
-            >
-                <ChevronLeft className="w-4 h-4" /> Previous
-            </button>
-            <span className="text-sm text-accent">
-                Page {page.number + 1} of {page.totalPages}
-            </span>
-            <button
-                onClick={() => onPageChange(page.number + 1)}
-                disabled={page.last}
-                className="flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-md disabled:opacity-50 disabled:cursor-not-allowed bg-accent/20 hover:bg-accent/30"
-            >
-                Next <ChevronRight className="w-4 h-4" />
-            </button>
-        </div>
-    );
-};
+// --- Main Component ---
 
 export default function TransactionHistory() {
   const [transactions, setTransactions] = useState<PaymentTransactionResponse[]>([]);
-  const [pageData, setPageData] = useState<Page<any> | null>(null);
+  const [pageData, setPageData] = useState<Page<PaymentTransactionResponse> | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { latestPaymentStatus } = useNotifications();
-
 
   const fetchTransactions = useCallback(async (page: number) => {
     setIsLoading(true);
     setError(null);
     try {
       const response = await apiClient.get<Page<PaymentTransactionResponse>>('/transactions', {
-        params: { page, size: 5 },
+        params: { page, size: 5 }, // Fetches 5 items per page
       });
       setTransactions(response.data.content);
       setPageData(response.data);
     } catch (err) {
       console.error("Failed to fetch transactions:", err);
-      setError("Could not load transactions.");
+      setError("Could not load transactions. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -109,35 +111,110 @@ export default function TransactionHistory() {
     fetchTransactions(currentPage);
   }, [currentPage, fetchTransactions]);
 
-  // Re-fetch transactions when a relevant notification arrives
+  // Re-fetch transactions on relevant notifications
   useEffect(() => {
     if (latestPaymentStatus) {
-      console.log('TransactionHistory received a payment status update, refetching transactions.');
-      // Re-fetch the current page to get the latest status
+      console.log('Payment status changed, refetching transactions.');
       fetchTransactions(currentPage);
     }
   }, [latestPaymentStatus, currentPage, fetchTransactions]);
 
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="space-y-4 pt-2">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      );
+    }
 
+    if (error) {
+      return (
+        <div className="text-center space-y-4 py-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          <Button onClick={() => fetchTransactions(currentPage)} variant="outline" size="sm">
+            <CreditCard className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      );
+    }
+
+    if (transactions.length === 0) {
+      return (
+        <div className="text-center py-12 space-y-4">
+          <CreditCard className="h-12 w-12 mx-auto text-muted-foreground" />
+          <div className="space-y-2">
+            <h3 className="text-lg font-medium text-foreground">No transactions yet</h3>
+            <p className="text-sm text-muted-foreground">
+              Your transaction history will appear here once you top up your balance.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {transactions.map((tx) => (
+                <TableRow key={tx.id}>
+                  <TableCell className="font-medium">{formatDate(tx.createdAt)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Plus className="h-4 w-4 text-muted-foreground" />
+                      <span>Balance Top-up</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-medium text-green-500">
+                      +${(tx.amountPaid / 100).toFixed(2)} {tx.currency.toUpperCase()}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusBadgeVariant(tx.status)}>
+                      {tx.status.charAt(0).toUpperCase() + tx.status.slice(1).toLowerCase()}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        {pageData && <PaginationControls page={pageData} onPageChange={setCurrentPage} />}
+      </>
+    );
+  };
+  
   return (
-    <div className="p-6 border rounded-lg bg-background/20 border-accent/50">
-      <h3 className="text-lg font-semibold text-foreground">Transaction History</h3>
-      {isLoading ? (
-        <div className="mt-4 space-y-2">
-            {[...Array(3)].map((_, i) => (
-                <div key={i} className="w-full h-16 rounded-md bg-accent/20 animate-pulse"></div>
-            ))}
-        </div>
-      ) : error ? (
-        <p className="mt-4 text-sm text-center text-red-400">{error}</p>
-      ) : transactions.length > 0 ? (
-        <div className="mt-2">
-          {transactions.map(tx => <TransactionRow key={tx.id} transaction={tx} />)}
-          {pageData && <PaginationControls page={pageData} onPageChange={setCurrentPage} />}
-        </div>
-      ) : (
-        <p className="mt-4 text-sm text-center text-accent">You have no transactions yet.</p>
-      )}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center text-primary">
+          <CreditCard className="h-5 w-5 mr-2" />
+          Transaction History
+        </CardTitle>
+        <CardDescription>
+          View all your account transactions and their current status.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {renderContent()}
+      </CardContent>
+    </Card>
   );
 }

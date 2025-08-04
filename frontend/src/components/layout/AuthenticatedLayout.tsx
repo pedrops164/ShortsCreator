@@ -35,13 +35,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
   // Once authenticated, render the full layout with the NotificationProvider.
   return (
     <NotificationProvider>
-      <div className="flex h-screen bg-background">
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <main className="flex-1 overflow-x-hidden overflow-y-auto">
-            {children}
-          </main>
-        </div>
-      </div>
+      {children}
     </NotificationProvider>
   );
 }

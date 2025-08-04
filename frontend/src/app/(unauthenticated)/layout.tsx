@@ -1,5 +1,5 @@
+import { Sidebar } from '@/components/sidebar';
 import '../styles/globals.css';
-import NavBar from "@/components/layout/NavBar";
 
 // This layout applies to all pages inside the (main) group
 export default function MainAppLayout({
@@ -8,8 +8,9 @@ export default function MainAppLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <NavBar>
-      {children}
-    </NavBar>
+    <>
+      <Sidebar />
+      <main className="flex-1 overflow-auto">{children}</main>
+    </>
   );
 }

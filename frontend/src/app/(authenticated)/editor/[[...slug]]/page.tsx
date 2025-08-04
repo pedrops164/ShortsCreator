@@ -7,6 +7,7 @@ import { RedditStoryEditor } from '@/components/editors/RedditStoryEditor';
 import { CharacterExplainsEditor } from '@/components/editors/CharacterExplainsEditor'; // Import new editor component
 import { Draft } from '@/types/drafts';
 import { CreationPayload } from '@/types/creation'; // Import new creation types
+import { ContentStatus } from '@/types/content';
 
 // This map is used to dynamically load the correct editor component based on the template type
 const EDITOR_COMPONENT_MAP = {
@@ -118,15 +119,20 @@ export default function EditorPage() {
     return <div className="text-center p-12 text-red-500">Error: Unknown editor template "{draftData.templateId}".</div>;
   }
 
+  // Determine if the form should be in a read-only state.
+  const isReadOnly = 'status' in draftData && draftData.status === ContentStatus.COMPLETED;
+
   return (
     <main className="p-8">
       {/* Render the dynamically selected component */}
-      <EditorComponent 
-        initialData={draftData} 
-        onSave={handleSave}
-        onSubmit={handleSubmit}
-        isSaving={isSaving}
-      />
+      <fieldset disabled={isReadOnly} className="space-y-8">
+        <EditorComponent 
+          initialData={draftData} 
+          onSave={handleSave}
+          onSubmit={handleSubmit}
+          isSaving={isSaving}
+        />
+      </fieldset>
     </main>
   );
 }

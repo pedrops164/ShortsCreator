@@ -1,236 +1,381 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { FileDown, MoreVertical, RefreshCw, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
-import apiClient from '@/lib/apiClient';
-import { Draft } from '@/types/drafts'; // Import shared types
-import { ContentStatus } from '@/types/content'; // Import shared enums
-import { getDraftTitle } from '@/lib/helper'; // Import helper function
-import { useNotifications } from '@/context/NotificationContext'; // Import notifications hook
+import React, { useState, useEffect, useMemo } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  FileVideo,
+  Plus,
+  Download,
+  RefreshCw,
+  AlertCircle,
+  MoreHorizontal,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  Eye,
+  Edit,
+  HelpCircle,
+} from "lucide-react";
 
-// Helper to format date
-const formatDate = (isoString: string): string => {
-  const date = new Date(isoString);
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+import apiClient from '@/lib/apiClient';
+import { Draft } from '@/types/drafts';
+import { ContentStatus } from '@/types/content';
+import { useNotifications } from '@/context/NotificationContext';
+import { getDraftTitle } from '@/lib/helper';
+import { useRouter } from 'next/navigation';
+
+// --- Constants ---
+const ITEMS_PER_PAGE = 8;
+
+// --- Helper Functions ---
+const formatDate = (isoString?: string): string => {
+  if (!isoString) return 'N/A';
+  return new Date(isoString).toLocaleDateString("en-GB", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 };
 
-// --- Sub-Components ---
+const getStatusBadge = (status: ContentStatus) => {
+    switch (status) {
+        case ContentStatus.PROCESSING:
+            return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border-blue-300/50" variant="outline">Processing</Badge>;
+        case ContentStatus.COMPLETED:
+            return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 border-green-300/50" variant="outline">Completed</Badge>;
+        case ContentStatus.FAILED:
+            return <Badge variant="destructive">Failed</Badge>;
+        case ContentStatus.DRAFT:
+            return <Badge variant="outline" className="border-border bg-muted text-muted-foreground hover:bg-muted">Draft</Badge>;
+        default:
+            return <Badge variant="outline">Unknown</Badge>;
+    }
+};
 
-// Status Badge Component - Now uses the shared ContentStatus type
-const StatusBadge = ({ status, progress }: { status: ContentStatus; progress?: number }) => {
-  const isProcessing = status === ContentStatus.PROCESSING;
-  const statusStyles = {
-    COMPLETED: {
-      bgColor: 'bg-green-500/10',
-      textColor: 'text-green-400',
-      icon: <CheckCircle className="w-4 h-4" />,
-      text: 'Completed',
-    },
-    PROCESSING: {
-      bgColor: 'bg-blue-500/10',
-      textColor: 'text-blue-400',
-      icon: <RefreshCw className="w-4 h-4 animate-spin" />,
-      text: 'Processing',
-    },
-    FAILED: {
-      bgColor: 'bg-red-500/10',
-      textColor: 'text-red-400',
-      icon: <XCircle className="w-4 h-4" />,
-      text: 'Error',
-    },
-    DRAFT: { 
-      bgColor: 'bg-yellow-500/10',
-      textColor: 'text-yellow-400',
-      icon: <CheckCircle className="w-4 h-4" />,
-      text: 'Draft',
+// --- Main Page Component ---
+export default function ContentLibrary() {
+  const [contents, setContents] = useState<Draft[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const router = useRouter();
+  
+  const { latestVideoStatus } = useNotifications();
+
+  // --- Data Fetching and Real-time Updates ---
+
+  const fetchContent = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const statusesToFetch = ['PROCESSING', 'COMPLETED', 'FAILED', 'DRAFT'];
+      const response = await apiClient.get<Draft[]>('/content', {
+        params: { statuses: statusesToFetch.join(',') },
+      });
+      // Sort by most recent first
+      const sortedData = response.data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setContents(sortedData);
+    } catch (err) {
+      console.error('Failed to fetch content:', err);
+      setError('Could not load your content library. Please try again later.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const style = statusStyles[status] || {};
-
-  return (
-    <div className={`inline-flex items-center gap-x-2 px-3 py-1 rounded-full text-sm font-medium ${style.bgColor} ${style.textColor}`}>
-      {style.icon}
-      <span>{style.text}</span>
-      {isProcessing && typeof progress === 'number' && (
-        <span className="font-mono text-xs opacity-80">({progress.toFixed(0)}%)</span>
-      )}
-    </div>
-  );
-};
-
-// Job Card for Mobile - Now themed and uses the Draft type
-const ContentCard = ({ content }: { content: Draft }) => {
-  const draftTitle = getDraftTitle(content);
-  return (
-    <div className="bg-background/50 rounded-lg p-4 mb-4 border border-accent flex flex-col space-y-3">
-        <div className="flex justify-between items-start">
-            <h3 className="text-foreground font-semibold text-base flex-1 pr-2">{draftTitle}</h3>
-            <div className="relative">
-                <button className="text-accent hover:text-foreground">
-                    <MoreVertical size={20} />
-                </button>
-            </div>
-        </div>
-        <div className="text-accent text-sm">
-            <p><span className="font-medium text-foreground/80">Template:</span> {content.contentType}</p>
-            <p><span className="font-medium text-foreground/80">Created:</span> {formatDate(content.createdAt)}</p>
-        </div>
-        <div className="flex justify-between items-center pt-2">
-            <StatusBadge status={content.status} progress={content.progressPercentage} />
-            {content.status === 'COMPLETED' && (
-                <button className="flex items-center gap-2 bg-primary text-white font-bold py-2 px-4 rounded-md hover:bg-primary/90 transition-colors">
-                    <FileDown size={18} />
-                    <span>Download</span>
-                </button>
-            )}
-        </div>
-    </div>
-  );
-};
-
-
-// --- Main Content Page Component ---
-export default function ContentPage() {
-  const [contents, setContents] = useState<Draft[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-
-  const { latestVideoStatus } = useNotifications();
-
-  // useEffect to fetch data from the API
   useEffect(() => {
-    const statusesToFetch = ['PROCESSING', 'COMPLETED', 'FAILED'];
-    const fetchContent = async () => {
-      try {
-        // Fetch content that is NOT a draft (e.g., PROCESSING, COMPLETED, FAILED)
-        const response = await apiClient.get<Draft[]>('/content', {
-          params: {
-            // Pass the statuses as a comma-separated string
-            statuses: statusesToFetch.join(','),
-          },
-        });
-        setContents(response.data);
-      } catch (error) {
-        console.error('Failed to fetch content:', error);
-      }
-    };
     fetchContent();
   }, []);
 
-  // useEffect to handle incoming notifications
   useEffect(() => {
     if (latestVideoStatus) {
       setContents(prevContents =>
-        prevContents.map(content => {
-          if (content.id === latestVideoStatus.contentId) {
-            // Update the specific item with new status and progress
-            return {
-              ...content,
-              status: latestVideoStatus.status,
-              progressPercentage: latestVideoStatus.progressPercentage,
-            };
-          }
-          return content;
-        })
+        prevContents.map(content =>
+          content.id === latestVideoStatus.contentId
+            ? { ...content, status: latestVideoStatus.status, progressPercentage: latestVideoStatus.progressPercentage }
+            : content
+        )
       );
     }
-  }, [latestVideoStatus]); // This effect runs whenever a new notification arrives
+  }, [latestVideoStatus]);
 
+  // --- Memoized Pagination ---
+  const paginatedItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return contents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [contents, currentPage]);
+  
+  const totalPages = Math.ceil(contents.length / ITEMS_PER_PAGE);
 
-  // Pagination logic
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = contents.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(contents.length / itemsPerPage);
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  // --- Action Handlers ---
+  const handleDownload = (item: Draft) => {
+    //TODO: Implement download logic
+  };
 
-  return (
-    <main className="flex-1 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-8">
-          <h2 className="text-3xl font-bold text-foreground tracking-tight">Submitted Content</h2>
-          <p className="text-accent mt-1">
-            Here are the videos you've submitted for generation.
-          </p>
-        </header>
+  const handleGetHelp = (item: Draft) => {
+    console.log(`Getting help for failed item: ${item.id}`);
+    alert(`To get help with "${getDraftTitle(item)}", please contact support with the ID: ${item.id}`);
+  };
 
-        {/* --- Content List Container (themed) --- */}
-        <div className="bg-background/50 border border-accent/50 rounded-xl shadow-lg">
-          {/* Desktop Table */}
-          <div className="hidden md:block">
-            <table className="w-full text-left">
-              <thead className="border-b border-accent/50">
-                <tr>
-                  <th className="p-4 text-sm font-semibold text-foreground/80">Title</th>
-                  <th className="p-4 text-sm font-semibold text-foreground/80">Template</th>
-                  <th className="p-4 text-sm font-semibold text-foreground/80">Submitted</th>
-                  <th className="p-4 text-sm font-semibold text-foreground/80">Status</th>
-                  <th className="p-4 text-sm font-semibold text-foreground/80 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentItems.map((content) => (
-                  <tr key={content.id} className="border-b border-accent/50">
-                    <td className="p-4 text-foreground font-medium max-w-xs truncate">{getDraftTitle(content)}</td>
-                    <td className="p-4 text-accent">{content.contentType}</td>
-                    <td className="p-4 text-accent">{formatDate(content.createdAt)}</td>
-                    <td className="p-4">
-                      <StatusBadge status={content.status} progress={content.progressPercentage} />
-                    </td>
-                    <td className="p-4 text-center">
-                      {content.status === 'COMPLETED' && (
-                        <button className="flex items-center justify-center mx-auto gap-2 bg-primary text-white font-bold py-2 px-4 rounded-md hover:bg-primary/90 transition-colors">
-                          <FileDown size={18} />
-                          <span>Download</span>
-                        </button>
-                      )}
-                      {content.status === 'FAILED' && (
-                         /* <button className="flex items-center justify-center mx-auto gap-2 bg-red-500 text-white font-bold py-2 px-4 rounded-md hover:bg-red-400 transition-colors">
-                          <RefreshCw size={18} />
-                          <span>Retry</span>
-                        </button> */
-                         <span className="text-accent italic">Contact staff for help</span>
-                      )}
-                       {content.status === 'PROCESSING' && (
-                         <span className="text-accent italic">No actions available</span>
-                      )}
-                    </td>
-                  </tr>
+  const handleDelete = async (item: Draft) => {
+    if (window.confirm(`Are you sure you want to delete "${getDraftTitle(item)}"?`)) {
+        console.log(`Deleting: ${item.id}`);
+        const originalContents = [...contents];
+        // Optimistically remove from UI
+        setContents(prev => prev.filter(i => i.id !== item.id));
+        try {
+            await apiClient.delete(`/content/${item.id}`);
+        } catch (error) {
+            console.error("Failed to delete content", error);
+            // Revert UI change on failure
+            setContents(originalContents);
+        }
+    }
+  };
+  
+  const handleContinue = (item: Draft) => {
+      console.log(`Continuing draft: ${item.id}`);
+      // Navigate to the editor page with the draft ID
+      router.push(`/editor/edit/${item.id}`);
+  };
+
+  // --- Render Logic ---
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-6 lg:p-8 min-h-full">
+        <div className="max-w-7xl mx-auto space-y-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <Skeleton className="h-8 w-48 mb-2" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+            <Skeleton className="h-10 w-40" />
+          </div>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center space-x-4 p-2">
+                    <Skeleton className="h-12 w-16 rounded-md" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                    <Skeleton className="h-6 w-24 rounded-full" />
+                    <Skeleton className="h-8 w-24 rounded-md" />
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
-          {/* Mobile Cards */}
-          <div className="md:hidden p-4">
-              {currentItems.map(content => <ContentCard key={content.id} content={content} />)}
-          </div>
-          
-          {/* Pagination */}
-          <div className="flex items-center justify-between p-4">
-            <button 
-                onClick={() => paginate(currentPage - 1)} 
-                disabled={currentPage === 1}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-accent/20 rounded-md hover:bg-accent/30 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                <ChevronLeft size={16} />
-                Previous
-            </button>
-            <span className="text-sm text-accent">
-                Page {currentPage} of {totalPages}
-            </span>
-            <button 
-                onClick={() => paginate(currentPage + 1)} 
-                disabled={currentPage === totalPages}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground bg-accent/20 rounded-md hover:bg-accent/30 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                Next
-                <ChevronRight size={16} />
-            </button>
+  if (error) {
+    return (
+      <div className="p-4 md:p-6 lg:p-8 min-h-full">
+        <div className="max-w-7xl mx-auto flex items-center justify-center h-[60vh]">
+          <div className="text-center space-y-4">
+            <Alert variant="destructive" className="max-w-md mx-auto">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <Button onClick={fetchContent} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
           </div>
         </div>
       </div>
-    </main>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-6 lg:p-8 min-h-full">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Content Library</h1>
+            <p className="text-muted-foreground mt-2">Manage, download, and track all your generated videos.</p>
+          </div>
+          <Button size="lg" onClick={() => router.push('/create')}>
+            <Plus className="h-5 w-5 mr-2" />
+            Generate New Video
+          </Button>
+        </div>
+
+        {/* Content List */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <FileVideo className="h-5 w-5 mr-2" />
+              Your Videos ({contents.length})
+            </CardTitle>
+            <CardDescription>
+              Track progress, download completed videos, and manage your content.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {contents.length === 0 ? (
+                <div className="text-center space-y-6 py-16">
+                    <FileVideo className="h-24 w-24 mx-auto text-muted-foreground/30" />
+                    <div className="space-y-2">
+                        <h2 className="text-2xl font-bold text-foreground">No content yet</h2>
+                        <p className="text-muted-foreground max-w-md mx-auto">
+                        Start creating amazing videos! Click the button below to generate your first one.
+                        </p>
+                    </div>
+                    <Button size="lg">
+                        <Plus className="h-5 w-5 mr-2" />
+                        Generate New Video
+                    </Button>
+                </div>
+            ) : (
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[45%]">Video</TableHead>
+                            <TableHead>Template</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                        {paginatedItems.map((item) => (
+                            <TableRow key={item.id} className="hover:bg-muted/50">
+                            <TableCell>
+                                <div className="flex items-start space-x-4">
+                                {item.thumbnailUrl ? (
+                                    <img
+                                        src={item.thumbnailUrl}
+                                        alt={getDraftTitle(item)}
+                                        className="w-20 h-12 rounded-md object-cover bg-muted flex-shrink-0"
+                                    />
+                                ) : (
+                                    <div className="w-20 h-12 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                                        <FileVideo className="h-6 w-6 text-muted-foreground" />
+                                    </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                    <p className="font-medium text-foreground" title={getDraftTitle(item)}>
+                                        {getDraftTitle(item)}
+                                    </p>
+                                    {item.status === ContentStatus.PROCESSING && typeof item.progressPercentage === 'number' && (
+                                    <div className="mt-2 space-y-1.5">
+                                        <Progress value={item.progressPercentage} className="h-1.5" />
+                                        <p className="text-xs text-muted-foreground">{Math.round(item.progressPercentage)}% complete</p>
+                                    </div>
+                                    )}
+                                </div>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                <span className="text-muted-foreground">{item.contentType}</span>
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex items-center text-muted-foreground">
+                                <Calendar className="h-4 w-4 mr-1.5 flex-shrink-0" />
+                                {formatDate(item.createdAt)}
+                                </div>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(item.status)}</TableCell>
+                            <TableCell className="text-right">
+                                <div className="flex items-center justify-end space-x-2">
+                                {item.status === ContentStatus.COMPLETED && (
+                                    <Button size="sm" onClick={() => handleDownload(item)}>
+                                    <Download className="h-4 w-4 mr-1" />
+                                    Download
+                                    </Button>
+                                )}
+                                {item.status === ContentStatus.FAILED && (
+                                    <Button size="sm" variant="outline" onClick={() => handleGetHelp(item)}>
+                                        <HelpCircle className="h-4 w-4 mr-1" />
+                                        Get Help
+                                    </Button>
+                                )}
+                                {item.status === ContentStatus.DRAFT && (
+                                    <Button size="sm" variant="outline" onClick={() => handleContinue(item)}>
+                                    <Edit className="h-4 w-4 mr-1" />
+                                    Continue
+                                    </Button>
+                                )}
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleContinue(item)}>
+                                        <Eye className="h-4 w-4 mr-2" />
+                                        View Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() => handleDelete(item)}
+                                        className="text-red-600 focus:text-red-600"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                    </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                </div>
+                            </TableCell>
+                            </TableRow>
+                        ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </p>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

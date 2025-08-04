@@ -79,9 +79,10 @@ public class RedditStoryOrchestrator {
             Path titleImage = redditImageService.createRedditPostImage(params);
 
             // Generate subtitles from the audio timings
-            String font = params.get("subtitlesFont").asText("Arial");
-            String color = params.get("subtitlesColor").asText("#FFFFFF");
-            String position = params.get("subtitlesPosition").asText("bottom");
+            JsonNode subtitles = params.get("subtitles");
+            String font = subtitles.get("font").asText("Arial");
+            String color = subtitles.get("color").asText("#FFFFFF");
+            String position = subtitles.get("position").asText("bottom");
             Path subtitleFile = subtitleService.createAssFile(narration.getWordTimings(), font, color, position);
 
             // Combine everything into a final video composition

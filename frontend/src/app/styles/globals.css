@@ -1,13 +1,144 @@
 @import "tailwindcss";
-@import "./theme-light.css";
-@import "./theme-dark.css";
 
-/* Define theme color names and map them to CSS variables */
 @theme {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-accent: var(--accent);
-  --color-primary: var(--primary);
+  --color-primary: #eab308;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #ef4444;
+  --color-secondary-foreground: #ffffff;
+
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-accent: #f1f5f9;
+  --color-accent-foreground: #0f172a;
+
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+
+  --color-border: #e2e8f0;
+  --color-input: #e2e8f0;
+  --color-ring: #eab308;
+
+  --radius: 0.5rem;
+
+  /* Custom theme colors */
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #6b7280;
+  --color-bg-gradient-from: #fefce8;
+  --color-bg-gradient-to: #fff7ed;
+  --color-balance-bg-from: #fef3c7;
+  --color-balance-bg-to: #fefce8;
+  --color-balance-border: #fde68a;
+  --color-balance-text: #92400e;
+  --color-yellow-primary: #eab308;
+  --color-yellow-secondary: #ca8a04;
+  --color-green-positive: #16a34a;
+  --color-red-negative: #dc2626;
+  --color-card-hover-border: #fcd34d;
+}
+
+.dark {
+  --color-background: #0f172a;
+  --color-foreground: #f8fafc;
+  --color-card: #1e293b;
+  --color-card-foreground: #f8fafc;
+  --color-popover: #1e293b;
+  --color-popover-foreground: #f8fafc;
+
+  --color-muted: #334155;
+  --color-muted-foreground: #94a3b8;
+  --color-accent: #334155;
+  --color-accent-foreground: #f8fafc;
+
+  --color-border: #334155;
+  --color-input: #334155;
+
+  /* Dark mode custom colors */
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-bg-gradient-from: #111827;
+  --color-bg-gradient-to: #1f2937;
+  --color-balance-bg-from: #713f12;
+  --color-balance-bg-to: #854d0e;
+  --color-balance-border: #a16207;
+  --color-balance-text: #fbbf24;
+  --color-yellow-primary: #fbbf24;
+  --color-yellow-secondary: #f59e0b;
+  --color-card-hover-border: #ca8a04;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+@layer utilities {
+  .text-primary {
+    color: var(--color-text-primary);
+  }
+
+  .text-secondary {
+    color: var(--color-text-secondary);
+  }
+
+  .text-muted {
+    color: var(--color-text-muted);
+  }
+
+  .bg-gradient-main {
+    background: linear-gradient(to bottom right, var(--color-bg-gradient-from), var(--color-bg-gradient-to));
+  }
+
+  .bg-gradient-balance {
+    background: linear-gradient(to right, var(--color-balance-bg-from), var(--color-balance-bg-to));
+  }
+
+  .border-balance {
+    border-color: var(--color-balance-border);
+  }
+
+  .text-balance {
+    color: var(--color-balance-text);
+  }
+
+  .text-yellow-primary {
+    color: var(--color-yellow-primary);
+  }
+
+  .bg-yellow-primary {
+    background-color: var(--color-yellow-primary);
+  }
+
+  .hover\:bg-yellow-secondary:hover {
+    background-color: var(--color-yellow-secondary);
+  }
+
+  .text-positive {
+    color: var(--color-green-positive);
+  }
+
+  .text-negative {
+    color: var(--color-red-negative);
+  }
+
+  .hover\:border-yellow:hover {
+    border-color: var(--color-card-hover-border);
+  }
 }
 
 @keyframes scroll {

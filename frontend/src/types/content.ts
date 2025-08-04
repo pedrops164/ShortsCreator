@@ -7,7 +7,7 @@ export enum ContentStatus {
     FAILED = 'FAILED',
 }
 
-export type ContentType = 'REDDIT_STORY' | 'TWITTER_THREAD';
+export type ContentType = 'REDDIT_STORY' | 'CHARACTER_EXPLAINS';
 
 // The base interface reflecting the common fields of the backend Content model.
 // This interface is generic to allow for different templateParams types.
