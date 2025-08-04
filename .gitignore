@@ -45,3 +45,7 @@ application.yml
 **/.env.dev
 **/.env.prod
 
+# Images, Videos, and Audio files
+*.png
+*.mp4
+*.mp3
