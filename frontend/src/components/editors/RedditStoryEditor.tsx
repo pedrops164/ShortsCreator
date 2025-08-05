@@ -13,14 +13,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import {
-  Save, Send, Plus, Trash2, AlertCircle, MessageSquare, User, Video, ArrowLeft, Loader2, Hash, FileText,
+  Plus, Trash2, AlertCircle, MessageSquare, User, Hash,
 } from "lucide-react";
 import { VideoCustomization } from './customization/VideoCustomization';
 import { SubtitleOptions } from './customization/SubtitleOptions';
+import { calculateApproximatePrice } from '@/lib/pricingUtils';
 
 interface EditorProps {
   initialData: RedditStoryDraft;
   onDirtyChange: (isDirty: boolean) => void;
+  onPriceUpdate: (priceInCents: number) => void;
 }
 
 // --- Default Values ---
@@ -66,7 +68,7 @@ const validate = (params: RedditStoryParams): Record<string, any> => {
 };
 
 export const RedditStoryEditor = forwardRef<EditorHandle, EditorProps>(
-  ({ initialData, onDirtyChange }: EditorProps, ref) => {
+  ({ initialData, onDirtyChange, onPriceUpdate }: EditorProps, ref) => {
   const [params, setParams] = useState<RedditStoryParams>({
     ...defaultParams,
     ...initialData.templateParams,
@@ -82,6 +84,19 @@ export const RedditStoryEditor = forwardRef<EditorHandle, EditorProps>(
     const hasChanged = JSON.stringify(initialData.templateParams) !== JSON.stringify(params);
     onDirtyChange(hasChanged);
   }, [params, initialData.templateParams, onDirtyChange]);
+
+    // --- useEffect for real-time price calculation ---
+  useEffect(() => {
+    let totalChars = 0;
+    totalChars += params.postTitle?.length || 0;
+    totalChars += params.postDescription?.length || 0;
+    params.comments?.forEach(comment => {
+      totalChars += comment.text?.length || 0;
+    });
+    const priceInCents = calculateApproximatePrice(totalChars);
+    onPriceUpdate(priceInCents);
+    
+  }, [params, onPriceUpdate]);
 
   // Expose a function to the parent via the ref
   useImperativeHandle(ref, () => ({

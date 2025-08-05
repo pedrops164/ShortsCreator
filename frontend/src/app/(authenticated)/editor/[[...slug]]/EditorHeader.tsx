@@ -1,9 +1,10 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { Loader2, Save, Send } from "lucide-react";
+import { Coins, Loader2, Save, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { formatPriceFromCents } from "@/lib/pricingUtils";
 
 interface EditorHeaderProps {
   editorTitle: string;
@@ -11,6 +12,7 @@ interface EditorHeaderProps {
   onGenerate: () => void;
   isSaving: boolean;
   isSaveDisabled: boolean; // To disable save when no changes are made
+  approximatePriceInCents: number;
 }
 
 export function EditorHeader({
@@ -18,7 +20,8 @@ export function EditorHeader({
   onSave,
   onGenerate,
   isSaving,
-  isSaveDisabled
+  isSaveDisabled,
+  approximatePriceInCents
 }: EditorHeaderProps) {
   const router = useRouter();
 
@@ -31,26 +34,36 @@ export function EditorHeader({
       <h1 className="flex-1 text-xl font-semibold truncate">
         {editorTitle}
       </h1>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          onClick={onSave}
-          disabled={isSaveDisabled || isSaving}
-        >
-          {isSaving ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-4 w-4" />
-          )}
-          Save
-        </Button>
-        <Button
-          onClick={onGenerate}
-          disabled={isSaving}
-        >
-          <Send className="mr-2 h-4 w-4" />
-          Generate...
-        </Button>
+      
+      <div className="flex items-center gap-4">
+        {(
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Coins className="h-4 w-4" />
+            <span>Approximate Cost: ~{formatPriceFromCents(approximatePriceInCents)}</span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={onSave}
+            disabled={isSaveDisabled || isSaving}
+          >
+            {isSaving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save
+          </Button>
+          <Button
+            onClick={onGenerate}
+            disabled={isSaving}
+          >
+            <Send className="mr-2 h-4 w-4" />
+            Generate...
+          </Button>
+        </div>
       </div>
     </header>
   );

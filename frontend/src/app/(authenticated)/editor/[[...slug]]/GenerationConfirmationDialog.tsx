@@ -51,7 +51,7 @@ export function GenerationConfirmationDialog({
         <div className="my-4 p-4 bg-muted rounded-lg flex items-center justify-center space-x-3">
           <Wallet className="h-6 w-6 text-primary" />
           <div className="text-center">
-            <p className="text-sm text-muted-foreground">Estimated Cost</p>
+            <p className="text-sm text-muted-foreground">Exact Cost</p>
             <p className="text-2xl font-bold">
               {formattedPrice}
             </p>

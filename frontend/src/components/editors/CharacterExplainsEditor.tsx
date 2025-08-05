@@ -19,6 +19,7 @@ import { VideoCustomization } from './customization/VideoCustomization';
 import { CharacterPreset } from '@/types';
 import apiClient from '@/lib/apiClient';
 import { EditorHandle } from '@/types/editor';
+import { calculateApproximatePrice } from '@/lib/pricingUtils';
 
 interface DialogueLine {
   characterId: string;
@@ -29,6 +30,7 @@ interface DialogueLine {
 interface EditorProps {
   initialData: CharacterExplainsDraft;
   onDirtyChange: (isDirty: boolean) => void;
+  onPriceUpdate: (priceInCents: number) => void;
 }
 
 // --- Default values for a new draft ---
@@ -53,7 +55,7 @@ const validate = (params: CharacterExplainsParams): Record<string, any> => {
 
 // --- Main Editor Component ---
 export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
-  ({ initialData, onDirtyChange }: EditorProps, ref) => {
+  ({ initialData, onDirtyChange, onPriceUpdate }: EditorProps, ref) => {
   const [presets, setPresets] = useState<CharacterPreset[]>([]);
   const [presetsLoading, setPresetsLoading] = useState(true);
   const [params, setParams] = useState<CharacterExplainsParams>({
@@ -82,6 +84,12 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
     const hasChanged = JSON.stringify(initialData.templateParams) !== JSON.stringify(params);
     onDirtyChange(hasChanged);
   }, [params, initialData.templateParams, onDirtyChange]);
+  
+  useEffect(() => {
+    const totalChars = params.dialogue?.reduce((sum, entry) => sum + (entry.text?.length || 0), 0) || 0;
+    const priceInCents = calculateApproximatePrice(totalChars);
+    onPriceUpdate(priceInCents);
+  }, [params, onPriceUpdate]);
 
   // Expose a function to the parent via the ref
   useImperativeHandle(ref, () => ({

@@ -33,6 +33,9 @@ export default function EditorPage() {
   // --- Dialog and Pricing State ---
   const [priceData, setPriceData] = useState<PriceResponse | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // State to hold the approximate price in cents
+  const [approximatePrice, setApproximatePrice] = useState(0);
   
   // Ref to communicate with the child editor component
   const editorRef = useRef<EditorHandle>(null);
@@ -176,6 +179,7 @@ export default function EditorPage() {
         onGenerate={handleGenerateClick}
         isSaving={isSaving}
         isSaveDisabled={!isDirty || isReadOnly}
+        approximatePriceInCents={approximatePrice} // Pass approx price to header to display
       />
       
       <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
@@ -184,6 +188,7 @@ export default function EditorPage() {
             ref={editorRef}
             initialData={draftData}
             onDirtyChange={setIsDirty}
+            onPriceUpdate={setApproximatePrice} // Pass setter to editor
           />
         </fieldset>
       </main>
