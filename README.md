@@ -9,3 +9,5 @@ ports
 8087 -> Payment Service
 5672 and 15672 -> rabbitmq
 27017 -> mongodb
+
+# Run stripe cli with stripe listen --forward-to localhost:8081/api/v1/stripe/webhooks

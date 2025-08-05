@@ -3,6 +3,7 @@
 import React, { createContext, useEffect, useState, ReactNode, useContext } from 'react';
 import { VideoStatusUpdate } from '@/types/content';
 import { PaymentStatusUpdate } from '@/types/balance';
+import { useSession } from 'next-auth/react';
 
 interface NotificationContextType {
     latestVideoStatus: VideoStatusUpdate | null;
@@ -13,6 +14,23 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
+    const { status } = useSession(); // Get the authentication status
+
+  // If the user is not authenticated, we provide a default, "empty" context.
+  // This prevents crashes because the hooks inside AuthenticatedNotificationLogic are never called.
+  if (status !== 'authenticated') {
+    const default_value = { latestVideoStatus: null, latestPaymentStatus: null, isConnected: false };
+    return (
+        <NotificationContext.Provider value={default_value}>
+            {children}
+        </NotificationContext.Provider>
+    );
+  }
+
+  return <AuthenticatedNotificationLogic>{children}</AuthenticatedNotificationLogic>;
+};
+
+function AuthenticatedNotificationLogic({ children }: { children: ReactNode }) {
     const [latestVideoStatus, setLatestVideoStatus] = useState<VideoStatusUpdate | null>(null);
     const [latestPaymentStatus, setLatestPaymentStatus] = useState<PaymentStatusUpdate | null>(null);
     const [isConnected, setIsConnected] = useState<boolean>(false);

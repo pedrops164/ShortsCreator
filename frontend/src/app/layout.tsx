@@ -24,9 +24,9 @@ export default function RootLayout({
         <SessionProvider>
           <SessionChecker />
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange={false}>
-          <div className="flex h-screen bg-background">
-            {children}
-          </div>
+            <div className="flex h-screen bg-background">
+              {children}
+            </div>
           </ThemeProvider>
         </SessionProvider>
       </body>

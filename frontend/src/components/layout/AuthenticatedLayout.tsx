@@ -4,6 +4,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { NotificationProvider } from '@/context/NotificationContext';
+import { BalanceProvider } from '@/context/BalanceContext';
 
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -35,7 +36,9 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
   // Once authenticated, render the full layout with the NotificationProvider.
   return (
     <NotificationProvider>
-      {children}
+      <BalanceProvider>
+        {children}
+      </BalanceProvider>
     </NotificationProvider>
   );
 }

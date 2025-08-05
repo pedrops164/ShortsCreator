@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useBalance } from '@/context/BalanceContext';
 import apiClient from '@/lib/apiClient'; // Assumes apiClient is configured
-import { useNotifications } from '@/context/NotificationContext'; // Assumes context is set up
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +12,6 @@ import { Plus, RefreshCw, AlertCircle, TrendingUp } from "lucide-react";
 import TransactionHistory from '@/components/TransactionHistory';
 
 // --- API & Data Type Definitions ---
-
-interface BalanceResponse {
-  balanceInCents: number;
-}
 
 interface CreateCheckoutResponse {
   redirectUrl: string;
@@ -48,27 +44,10 @@ const topUpPackages = [
 
 export default function BillingDashboard() {
   // --- State Management ---
-  const [balance, setBalance] = useState<number | null>(null);
-  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
-  const [balanceError, setBalanceError] = useState<string | null>(null);
+  const { balanceInCents, isLoading: isLoadingBalance, error: balanceError, fetchBalance } = useBalance();
   const [isRedirecting, setIsRedirecting] = useState<string | null>(null);
-  const { latestPaymentStatus } = useNotifications();
 
   // --- Data Fetching & API Calls ---
-
-  const fetchBalance = async () => {
-    setIsLoadingBalance(true);
-    setBalanceError(null);
-    try {
-      const response = await apiClient.get<BalanceResponse>('/balance');
-      setBalance(response.data.balanceInCents / 100);
-    } catch (err) {
-      console.error("Failed to fetch balance:", err);
-      setBalanceError('Failed to load balance. Please try again.');
-    } finally {
-      setIsLoadingBalance(false);
-    }
-  };
   
   const handleTopUp = async (packageId: string) => {
     setIsRedirecting(packageId);
@@ -88,20 +67,9 @@ export default function BillingDashboard() {
     }
   };
 
-  // --- Effects ---
-
-  useEffect(() => {
-    fetchBalance();
-  }, []);
-
-  useEffect(() => {
-    if (latestPaymentStatus && ['COMPLETED', 'REFUNDED', 'DISPUTED'].includes(latestPaymentStatus.status)) {
-      console.log('Payment status changed, refetching data...');
-      fetchBalance();
-    }
-  }, [latestPaymentStatus]);
-  
   // --- Render ---
+
+  const balanceInDollars = balanceInCents !== null ? balanceInCents / 100 : null;
 
   return (
     <div className="p-4 md:p-6 lg:p-8 bg-gradient-main min-h-full">
@@ -133,7 +101,7 @@ export default function BillingDashboard() {
               </div>
             ) : (
               <div className="space-y-2">
-                <div className="text-5xl md:text-6xl font-bold text-yellow-primary">${balance?.toFixed(2) ?? '0.00'}</div>
+                <div className="text-5xl md:text-6xl font-bold text-yellow-primary">${balanceInDollars?.toFixed(2) ?? '0.00'}</div>
                 <div className="flex items-center justify-center text-sm text-secondary">
                   <TrendingUp className="h-4 w-4 mr-1" />
                   Ready to use for content creation

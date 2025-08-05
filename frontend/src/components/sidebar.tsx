@@ -1,10 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import { useBalance } from "@/context/BalanceContext"
+import { formatPriceFromCents } from "@/lib/pricingUtils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { usePathname } from "next/navigation" 
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip" // For collapsed view
 import {
   CreditCard,
   HelpCircle,
@@ -13,9 +17,14 @@ import {
   Zap,
   PlusSquare,
   LayoutGrid,
+  Wallet,
+  LogOut,
+  LogIn,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggleButton } from "./ThemeToggleButton"
+import { signOut, useSession } from "next-auth/react"
+import Link from "next/link"
 
 const navigationItems = [
   {
@@ -47,6 +56,7 @@ const bottomItems = [
 ]
 
 export function Sidebar() {
+  const { status } = useSession(); // Get auth status
   const [isCollapsed, setIsCollapsed] = useState(false)
   // 👇 Get the current path
   const pathname = usePathname()
@@ -109,20 +119,31 @@ export function Sidebar() {
         </nav>
       </div>
 
-      <Separator />
+      <div className="mt-auto space-y-2 p-2"></div>
+        {/* Only render the balance section if the user is authenticated */}
+        {status === 'authenticated' && (
+          <>
+            <Separator />
+            <div className="p-1">
+              <BalanceDisplay isCollapsed={isCollapsed} />
+            </div>
+          </>
+        )}
 
-      {/* Theme Toggle */}
-      <div className="p-2">
-        <div className={cn("flex items-center", isCollapsed ? "justify-center" : "justify-between px-2")}>
-          {!isCollapsed && <span className="text-sm font-medium text-primary">Theme</span>}
-          <ThemeToggleButton />
+        <Separator />
+
+        {/* Theme Toggle */}
+        <div className="p-1.5">
+          <div className={cn("flex items-center", isCollapsed ? "justify-center" : "justify-between px-2")}>
+            {!isCollapsed && <span className="text-sm font-medium text-primary">Theme</span>}
+            <ThemeToggleButton />
+          </div>
         </div>
-      </div>
 
-      <Separator />
 
-      {/* Bottom Navigation */}
-      <div className="p-2">
+        <Separator />
+
+        {/* Bottom Navigation */}
         <nav className="space-y-1">
           {bottomItems.map((item) => {
             const Icon = item.icon
@@ -141,7 +162,90 @@ export function Sidebar() {
             )
           })}
         </nav>
+
+        {status !== 'loading' && (
+          <>
+            <Separator />
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {status === 'authenticated' ? (
+                    // --- LOGOUT BUTTON ---
+                    <Button
+                      variant="ghost"
+                      className={cn("w-full justify-start h-10", isCollapsed && "px-2 justify-center")}
+                      onClick={() => signOut({ callbackUrl: '/login' })}
+                    >
+                      <LogOut className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
+                      {!isCollapsed && <span>Logout</span>}
+                    </Button>
+                  ) : (
+                    // --- LOGIN BUTTON ---
+                    <Button
+                      variant="ghost"
+                      className={cn("w-full justify-start h-10", isCollapsed && "px-2 justify-center")}
+                      asChild
+                    >
+                      <Link href="/login">
+                        <LogIn className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
+                        {!isCollapsed && <span>Login</span>}
+                      </Link>
+                    </Button>
+                  )}
+                </TooltipTrigger>
+                {isCollapsed && (
+                  <TooltipContent side="right">
+                    {status === 'authenticated' ? 'Logout' : 'Login'}
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+          </>
+        )}
       </div>
+  )
+}
+
+function BalanceDisplay({ isCollapsed }: { isCollapsed: boolean }) {
+  const { balanceInCents, isLoading } = useBalance();
+
+  if (isCollapsed) {
+    return (
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" className="w-full justify-center h-10 px-2" asChild>
+              <a href="/account">
+                <Wallet className="h-5 w-5" />
+              </a>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="flex items-center gap-2">
+            Balance: 
+            <span className="font-semibold">
+              {isLoading ? "..." : formatPriceFromCents(balanceInCents ?? 0)}
+            </span>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  return (
+    <div className="flex h-10 items-center justify-between px-2">
+      <div className="flex items-baseline justify-items-center space-x-2">
+        <span className="font-medium text-primary">Balance:</span>
+        {isLoading ? (
+          <Skeleton className="h-5 w-16" />
+        ) : (
+          <span className="font-bold text-primary">
+            {formatPriceFromCents(balanceInCents ?? 0)}
+          </span>
+        )}
+      </div>
+      <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+        <a href="/account"><PlusSquare className="h-4 w-4" /></a>
+      </Button>
     </div>
   )
 }
