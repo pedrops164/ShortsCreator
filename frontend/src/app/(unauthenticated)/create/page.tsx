@@ -10,7 +10,7 @@ const contentTemplates = [
     id: 'reddit-story',
     title: 'Reddit Story',
     description: 'Turn any Reddit thread into a viral video with compelling narration and gameplay.',
-    videoSrc: '/videos/test_reddit_story.mp4',
+    videoSrc: '/assets/videos/test_reddit_story.mp4',
     createUrl: '/editor/create/reddit_story_v1',
     status: 'available',
   },
@@ -18,7 +18,7 @@ const contentTemplates = [
     id: 'character-explains',
     title: 'Character Explains',
     description: "An animated character breaks down complex topics in a simple, engaging way.",
-    videoSrc: '/videos/test_character_explains.mp4',
+    videoSrc: '/assets/videos/test_character_explains.mp4',
     createUrl: '/editor/create/character_explains_v1',
     status: 'available',
   },
@@ -26,7 +26,7 @@ const contentTemplates = [
     id: 'coming-soon-1',
     title: 'AI News Anchor',
     description: 'Generate daily news shorts with a realistic AI news anchor delivering the script.',
-    videoSrc: '/videos/test_reddit_story2.mp4', // Placeholder video
+    videoSrc: '/assets/videos/test_reddit_story2.mp4', // Placeholder video
     createUrl: '#',
     status: 'coming-soon',
   },

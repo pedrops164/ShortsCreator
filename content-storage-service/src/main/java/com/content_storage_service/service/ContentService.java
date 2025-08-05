@@ -1,6 +1,7 @@
 package com.content_storage_service.service;
 
 import com.content_storage_service.config.AppProperties;
+import com.content_storage_service.dto.ContentPriceResponse;
 import com.content_storage_service.model.Content;
 import com.shortscreator.shared.enums.ContentType;
 import com.shortscreator.shared.validation.TemplateValidator;
@@ -22,7 +23,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.Map; // Import Map
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,6 +39,7 @@ public class ContentService {
     private final AppProperties appProperties; // Inject the properties bean
     private final VideoUploadProcessorService processorService;
     private final Map<String, ContentType> templateToContentTypeMap; // Inject the map
+    private final PriceCalculationService priceCalculationService;
 
     /**
      * Creates a new content draft.
@@ -255,5 +257,21 @@ public class ContentService {
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Content not found or does not belong to user")))
                 .flatMap(content -> contentRepository.delete(content))
                 .then(); // Convert Mono<Content> from delete(content) to Mono<Void>
+    }
+
+    public Mono<ContentPriceResponse> calculateDraftPrice(String contentId, String userId) {
+        return contentRepository.findByIdAndUserId(contentId, userId)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Content not found with ID: " + contentId)))
+                .flatMap(content -> {
+                    if (content.getStatus() != ContentStatus.DRAFT) {
+                        return Mono.error(new IllegalStateException("Price can only be calculated for drafts. Current status: " + content.getStatus()));
+                    }
+                    try {
+                        ContentPriceResponse priceResponse = priceCalculationService.calculatePrice(content);
+                        return Mono.just(priceResponse);
+                    } catch (IllegalArgumentException e) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage()));
+                    }
+                });
     }
 }

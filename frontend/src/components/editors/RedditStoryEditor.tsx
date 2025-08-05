@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, ChangeEvent, useRef } from 'react';
-import { RedditStoryDraft, RedditStoryParams } from '@/types';
+import React, { useState, ChangeEvent, useRef, useImperativeHandle, forwardRef, useEffect } from 'react';import { RedditStoryDraft, RedditStoryParams } from '@/types';
+import { Draft } from '@/types/drafts';
+import { EditorHandle } from '@/types/editor';
 
 // --- UI Components & Icons ---
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,10 +20,7 @@ import { SubtitleOptions } from './customization/SubtitleOptions';
 
 interface EditorProps {
   initialData: RedditStoryDraft;
-  onSave: (data: RedditStoryDraft) => void;
-  onSubmit: (data: RedditStoryDraft) => void;
-  isSaving: boolean;
-  isSubmitting: boolean; // Added for separate submit state
+  onDirtyChange: (isDirty: boolean) => void;
 }
 
 // --- Default Values ---
@@ -40,7 +38,7 @@ const defaultParams: RedditStoryParams = {
     show: true,
     color: '#FFFFFF',
     font: 'Arial',
-    position: 'bottom',
+    position: 'center',
   },
   voiceSelection: '',
   theme: 'dark',
@@ -67,7 +65,8 @@ const validate = (params: RedditStoryParams): Record<string, any> => {
   return errors;
 };
 
-export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving, isSubmitting }: EditorProps) {
+export const RedditStoryEditor = forwardRef<EditorHandle, EditorProps>(
+  ({ initialData, onDirtyChange }: EditorProps, ref) => {
   const [params, setParams] = useState<RedditStoryParams>({
     ...defaultParams,
     ...initialData.templateParams,
@@ -76,6 +75,26 @@ export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving, isS
 
   const [newComment, setNewComment] = useState({ author: '', text: '' });
   const commentsEndRef = useRef<HTMLDivElement>(null);
+
+  // Effect to check for changes and report dirty status to parent
+  useEffect(() => {
+    // Simple stringify comparison is sufficient for this use case
+    const hasChanged = JSON.stringify(initialData.templateParams) !== JSON.stringify(params);
+    onDirtyChange(hasChanged);
+  }, [params, initialData.templateParams, onDirtyChange]);
+
+  // Expose a function to the parent via the ref
+  useImperativeHandle(ref, () => ({
+    getValidatedData: () => {
+      const validationErrors = validate(params);
+      setErrors(validationErrors);
+      if (Object.keys(validationErrors).length > 0) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return null; // Indicate validation failure
+      }
+      return params; // Return valid data
+    },
+  }));
 
   // --- Handlers  ---
 
@@ -105,38 +124,8 @@ export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving, isS
     setParams(prev => ({ ...prev, comments: updatedComments }));
   };
 
-  const handleSave = () => {
-    onSave({ ...initialData, templateParams: params });
-  };
-
-  const handleSubmit = () => {
-    const validationErrors = validate(params);
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length === 0) {
-      onSubmit({ ...initialData, templateParams: params });
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      console.log('Validation failed:', validationErrors);
-    }
-  };
-
   return (
-    <div className="p-4 md:p-6 lg:p-8 bg-background min-h-full">
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Reddit Story Editor</h1>
-            <div className="flex items-center space-x-3">
-            <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Save Draft
-            </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                Submit for Generation
-            </Button>
-            </div>
-        </div>
 
         {/* Validation Errors */}
         {Object.keys(errors).length > 0 && (
@@ -259,6 +248,8 @@ export function RedditStoryEditor({ initialData, onSave, onSubmit, isSaving, isS
           />
         </div>
       </div>
-    </div>
   );
 }
+);
+
+RedditStoryEditor.displayName = "RedditStoryEditor";

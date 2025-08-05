@@ -8,3 +8,4 @@ export * from './balance';
 export * from './page';
 export * from './assets';
 export * from './character_explains';
+export * from './editor';

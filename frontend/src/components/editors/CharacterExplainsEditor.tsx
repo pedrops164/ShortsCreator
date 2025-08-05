@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { CharacterExplainsDraft, CharacterExplainsParams } from '@/types'; // Assuming types are in @/types
 import {
-  Save, Send, Plus, Trash2, AlertCircle, Users, MessageSquare, ArrowLeft, Loader2
+  Plus, Trash2, AlertCircle, Users, MessageSquare, Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { SubtitleOptions } from './customization/SubtitleOptions';
 import { VideoCustomization } from './customization/VideoCustomization';
 import { CharacterPreset } from '@/types';
 import apiClient from '@/lib/apiClient';
+import { EditorHandle } from '@/types/editor';
 
 interface DialogueLine {
   characterId: string;
@@ -27,10 +28,7 @@ interface DialogueLine {
 // --- Prop Definition ---
 interface EditorProps {
   initialData: CharacterExplainsDraft;
-  onSave: (data: CharacterExplainsDraft) => void;
-  onSubmit: (data: CharacterExplainsDraft) => void;
-  isSaving: boolean;
-  isSubmitting: boolean;
+  onDirtyChange: (isDirty: boolean) => void;
 }
 
 // --- Default values for a new draft ---
@@ -40,7 +38,7 @@ const defaultParams: CharacterExplainsParams = {
   dialogue: [],
   backgroundVideoId: 'minecraft1',
   aspectRatio: '9:16',
-  subtitles: { show: true, color: '#FFFFFF', font: 'Arial', position: 'bottom' },
+  subtitles: { show: true, color: '#FFFFFF', font: 'Arial', position: 'center' },
 };
 
 // --- Validation Logic ---
@@ -54,7 +52,8 @@ const validate = (params: CharacterExplainsParams): Record<string, any> => {
 };
 
 // --- Main Editor Component ---
-export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSaving, isSubmitting }: EditorProps) {
+export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
+  ({ initialData, onDirtyChange }: EditorProps, ref) => {
   const [presets, setPresets] = useState<CharacterPreset[]>([]);
   const [presetsLoading, setPresetsLoading] = useState(true);
   const [params, setParams] = useState<CharacterExplainsParams>({
@@ -77,6 +76,25 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
 
   // --- Effects ---
 
+  // Effect to check for changes and report dirty status to parent
+  useEffect(() => {
+    // Simple stringify comparison is sufficient for this use case
+    const hasChanged = JSON.stringify(initialData.templateParams) !== JSON.stringify(params);
+    onDirtyChange(hasChanged);
+  }, [params, initialData.templateParams, onDirtyChange]);
+
+  // Expose a function to the parent via the ref
+  useImperativeHandle(ref, () => ({
+    getValidatedData: () => {
+      const validationErrors = validate(params);
+      setErrors(validationErrors);
+      if (Object.keys(validationErrors).length > 0) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return null; // Indicate validation failure
+      }
+      return params; // Return valid data
+    },
+  }));
 
   // --- FETCH PRESETS ---
   useEffect(() => {
@@ -171,20 +189,6 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
     setParams(p => ({ ...p, subtitles: { ...p.subtitles, [field]: value } }));
   };
 
-  const handleSave = () => {
-    onSave({ ...initialData, templateParams: params });
-  };
-
-  const handleSubmit = () => {
-    const validationErrors = validate(params);
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length === 0) {
-      onSubmit({ ...initialData, templateParams: params });
-    } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
   const getCharacterById = (id: string) => activePreset?.characters.find(c => c.characterId === id);
 
   // --- RENDER A LOADING STATE ---
@@ -200,28 +204,6 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
   return (
     <div className="bg-background min-h-screen p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex flex-wrap gap-4 items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon" asChild>
-              <a href="/dashboard/content"><ArrowLeft className="h-5 w-5" /></a>
-            </Button>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Character Explains Editor</h1>
-              <p className="text-muted-foreground mt-1">Craft a dialogue video with your selected characters.</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Button variant="outline" onClick={handleSave} disabled={isSaving || isSubmitting}>
-              {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-              Save Draft
-            </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting || isSaving}>
-              {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-              Submit for Generation
-            </Button>
-          </div>
-        </div>
 
         {/* Validation Errors */}
         {Object.keys(errors).length > 0 && (
@@ -383,3 +365,6 @@ export function CharacterExplainsEditor({ initialData, onSave, onSubmit, isSavin
     </div>
   );
 }
+);
+
+CharacterExplainsEditor.displayName = "CharacterExplainsEditor";

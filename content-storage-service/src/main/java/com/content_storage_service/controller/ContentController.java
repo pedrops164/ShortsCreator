@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import com.content_storage_service.dto.ContentCreationRequest; // DTO for creating a new content draft
+import com.content_storage_service.dto.ContentPriceResponse;
 
 import org.springframework.web.server.ResponseStatusException; // For throwing HTTP errors
 
@@ -77,5 +78,21 @@ public class ContentController {
             @PathVariable String contentId,
             @RequestHeader("X-User-ID") String userId) {
         return contentService.deleteContent(contentId, userId);
+    }
+
+    /**
+     * Calculates and returns the generation price for a given content draft.
+     * @param contentId The ID of the content draft.
+     * @param userId The ID of the user owning the draft.
+     * @return A Mono containing the price details.
+     */
+    @GetMapping("/{contentId}/price")
+    @ResponseStatus(HttpStatus.OK)
+    public Mono<ContentPriceResponse> getDraftPrice(
+            @PathVariable String contentId,
+            @RequestHeader("X-User-ID") String userId) {
+        return contentService.calculateDraftPrice(contentId, userId)
+                .onErrorResume(IllegalStateException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage())))
+                .onErrorResume(IllegalArgumentException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage())));
     }
 }

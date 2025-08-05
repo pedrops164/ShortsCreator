@@ -43,3 +43,11 @@ export interface PaymentStatusUpdate {
   amount: number; // in cents
   status: TransactionStatus;
 }
+
+/*
+  * Represents the price to generate a draft.
+  */
+export interface PriceResponse {
+  finalPrice: number; // Price in cents
+  currency: string;
+}

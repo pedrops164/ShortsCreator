@@ -77,11 +77,6 @@ const BackgroundVideo = ({ value, onChange, error }: SelectorProps) => {
             <div key={bg.id} onClick={() => onChange(bg.assetId)}
                 className={`relative cursor-pointer rounded-lg border-2 p-2 transition-all ${ value === bg.assetId ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50' }`}>
                 
-                {/* New: Use a smaller container for the image.
-                  The `w-[120px]` and `h-[67.5px]` classes give a 16:9 aspect ratio 
-                  and a smaller fixed size. You can adjust these numbers to your liking.
-                  `overflow-hidden` is important to contain the image.
-                */}
                 <div className="relative w-full h-20 aspect-video rounded-md overflow-hidden bg-muted">
                     <Image 
                         src={bg.thumbnailUrl} 
@@ -188,7 +183,6 @@ const Voice = ({ value, onChange, error }: SelectorProps) => {
   };
 
   if (loading) return <div className="p-4 text-center">Loading voices...</div>;
-  if (error) return <div className="p-4 text-center text-red-500">Error: {error}</div>;
 
   return (
     <div>

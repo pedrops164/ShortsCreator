@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import apiClient from '@/lib/apiClient';
 import { RedditStoryEditor } from '@/components/editors/RedditStoryEditor';
@@ -8,11 +8,15 @@ import { CharacterExplainsEditor } from '@/components/editors/CharacterExplainsE
 import { Draft } from '@/types/drafts';
 import { CreationPayload } from '@/types/creation'; // Import new creation types
 import { ContentStatus } from '@/types/content';
+import { PriceResponse } from '@/types/balance';
+import { EditorHandle } from '@/types/editor';
+import { EditorHeader } from './EditorHeader';
+import { GenerationConfirmationDialog } from './GenerationConfirmationDialog';
 
 // This map is used to dynamically load the correct editor component based on the template type
-const EDITOR_COMPONENT_MAP = {
-  'reddit_story_v1': RedditStoryEditor,
-  'character_explains_v1': CharacterExplainsEditor,
+const EDITOR_MAP = {
+  'reddit_story_v1': { component: RedditStoryEditor, title: 'Reddit Story Editor' },
+  'character_explains_v1': { component: CharacterExplainsEditor, title: 'Character Explains Editor' },
 };
 
 export default function EditorPage() {
@@ -24,6 +28,14 @@ export default function EditorPage() {
   const [draftData, setDraftData] = useState<Draft | CreationPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false); // Track if form has changes
+
+  // --- Dialog and Pricing State ---
+  const [priceData, setPriceData] = useState<PriceResponse | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Ref to communicate with the child editor component
+  const editorRef = useRef<EditorHandle>(null);
 
   useEffect(() => {
     // Logic to decide whether to create a new draft or fetch an existing one
@@ -63,48 +75,82 @@ export default function EditorPage() {
   }, [slug, router]);
 
   // This function is passed down to the specific editor component
-  const handleSave = async (updatedData: Draft | CreationPayload): Promise<Draft | null> => {
+  const handleSave = async (params: Record<string, any>): Promise<Draft | null> => {
     setIsSaving(true);
-    console.log("Saving data:", updatedData);
-
     try {
-      if ('id' in updatedData && updatedData.id) {
-        const response = await apiClient.put<Draft>(`/content/${updatedData.id}`, updatedData.templateParams);
-        setDraftData(response.data);
-        console.log("Draft updated:", response.data);
-        return response.data;
-      } else {
-        const creationPayload = updatedData as CreationPayload;
+      let savedDraft: Draft;
+      const isNewDraft = !(draftData && 'id' in draftData && draftData.id);
+
+      if (isNewDraft) {
+        const creationPayload = { ...draftData, templateParams: params } as CreationPayload;
         const response = await apiClient.post<Draft>('/content/drafts', creationPayload);
-        setDraftData(response.data);
-        console.log("New draft created:", response.data);
-        router.replace(`/editor/edit/${response.data.id}`);
-        return response.data;
+        savedDraft = response.data;
+      } else {
+        const response = await apiClient.put<Draft>(`/content/${(draftData as Draft).id}`, params);
+        savedDraft = response.data;
       }
+      
+      setDraftData(savedDraft); // Update the state with the saved draft (which now has an ID)
+      setIsDirty(false);
+      return savedDraft;
     } catch (error) {
       console.error("Failed to save draft:", error);
-      return null; // Return null on error
+      return null;
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleSubmit = async (updatedData: Draft | CreationPayload) => {
-    const savedDraft = await handleSave(updatedData); // Save first
+  // --- Button Click Handlers ---
+  const handleSaveClick = async () => {
+    const latestParams = editorRef.current?.getValidatedData();
+    if (latestParams) {
+      const wasNewDraft = !(draft && 'id' in draft && draft.id);
+      const savedDraft = await handleSave(latestParams);
 
-    // Check if the save was successful before proceeding
-    if (savedDraft && savedDraft.id) {
-      console.log("Submitting data for draft ID:", savedDraft.id);
+      // If it was a new draft, we need to update the URL
+      if (savedDraft && wasNewDraft) {
+        router.replace(`/editor/edit/${savedDraft.id}`, { scroll: false });
+      }
+    }
+  };
+
+  const handleGenerateClick = async () => {
+    // Get latest data from the editor
+    console.log("Generating content with latest params...");
+    const latestParams = editorRef.current?.getValidatedData();
+    if (!latestParams) {
+      console.error("Validation failed, cannot generate content.");
+      return; // Validation failed in child
+    }
+
+    console.log("Latest params for generation:", latestParams);
+    // Save the draft (even if not dirty, to ensure consistency)
+    const savedDraft = await handleSave(latestParams);
+    if (!savedDraft?.id) {
+      console.error("Save failed, aborting generation.");
+      return;
+    }
+
+    // Fetch price and open dialog
+    try {
+      const response = await apiClient.get<PriceResponse>(`/content/${savedDraft.id}/price`);
+      setPriceData(response.data);
+      setIsDialogOpen(true);
+    } catch (error) {
+      console.error("Failed to fetch price:", error);
+    }
+  };
+
+  const handleConfirmGeneration = async () => {
+    if (draftData && 'id' in draftData && draftData.id) {
       try {
-        // Use the ID from the fresh `savedDraft` object
-        const response = await apiClient.post(`/content/${savedDraft.id}/generate`);
-        console.log("Draft submitted:", response.data);
+        await apiClient.post(`/content/${draftData.id}/generate`);
         router.push('/content');
       } catch (error) {
-        console.error("Failed to submit draft:", error);
+        console.error("Failed to submit draft for generation:", error);
+        setIsDialogOpen(false);
       }
-    } else {
-      console.error("Cannot submit because the draft failed to save or has no ID.");
     }
   };
 
@@ -113,26 +159,44 @@ export default function EditorPage() {
   }
 
   // Look up the component from the map using the template name
-  const EditorComponent = EDITOR_COMPONENT_MAP[draftData.templateId as keyof typeof EDITOR_COMPONENT_MAP];
-
-  if (!EditorComponent) {
+  const editorInfo = EDITOR_MAP[draftData.templateId as keyof typeof EDITOR_MAP];
+  if (!editorInfo) {
     return <div className="text-center p-12 text-red-500">Error: Unknown editor template "{draftData.templateId}".</div>;
   }
+  const EditorComponent = editorInfo.component;
 
   // Determine if the form should be in a read-only state.
   const isReadOnly = 'status' in draftData && draftData.status === ContentStatus.COMPLETED;
 
   return (
-    <main className="p-8">
-      {/* Render the dynamically selected component */}
-      <fieldset disabled={isReadOnly} className="space-y-8">
-        <EditorComponent 
-          initialData={draftData} 
-          onSave={handleSave}
-          onSubmit={handleSubmit}
-          isSaving={isSaving}
-        />
-      </fieldset>
-    </main>
+    <div className="flex flex-col h-screen">
+      <EditorHeader
+        editorTitle={editorInfo.title}
+        onSave={handleSaveClick}
+        onGenerate={handleGenerateClick}
+        isSaving={isSaving}
+        isSaveDisabled={!isDirty || isReadOnly}
+      />
+      
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <fieldset disabled={isReadOnly || isSaving} className="space-y-8">
+          <EditorComponent
+            ref={editorRef}
+            initialData={draftData}
+            onDirtyChange={setIsDirty}
+          />
+        </fieldset>
+      </main>
+
+      <GenerationConfirmationDialog
+        isOpen={isDialogOpen}
+        onClose={() => {
+            setIsDialogOpen(false);
+        }}
+        onConfirm={handleConfirmGeneration}
+        priceInCents={priceData?.finalPrice}
+        currency={priceData?.currency}
+      />
+    </div>
   );
 }

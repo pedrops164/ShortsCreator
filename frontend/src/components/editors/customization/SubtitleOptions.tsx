@@ -65,7 +65,6 @@ export function SubtitleOptions({ value, onChange, hasErrors }: SubtitleOptionsP
                                     <SelectContent>
                                         <SelectItem value="top">Top</SelectItem>
                                         <SelectItem value="center">Center</SelectItem>
-                                        <SelectItem value="bottom">Bottom</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
