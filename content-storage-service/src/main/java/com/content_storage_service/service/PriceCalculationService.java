@@ -1,8 +1,9 @@
 package com.content_storage_service.service;
 
-import com.content_storage_service.dto.ContentPriceResponse;
 import com.content_storage_service.model.Content;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.shortscreator.shared.dto.ContentPriceV1;
+
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,7 +17,7 @@ public class PriceCalculationService {
     /**
      * Routes the content object to the correct pricing function based on its templateId.
      */
-    public ContentPriceResponse calculatePrice(Content content) {
+    public ContentPriceV1 calculatePrice(Content content) {
         if (content.getTemplateParams() == null) {
             throw new IllegalArgumentException("Template parameters cannot be null for price calculation.");
         }
@@ -32,7 +33,7 @@ public class PriceCalculationService {
      * Calculates price for the "reddit_story_v1" template.
      * Counts characters from title, description (selftext), and all comments.
      */
-    private ContentPriceResponse calculateRedditStoryPrice(JsonNode params) {
+    private ContentPriceV1 calculateRedditStoryPrice(JsonNode params) {
         int totalChars = 0;
 
         // Safely access fields using .path() which prevents NullPointerExceptions
@@ -52,7 +53,7 @@ public class PriceCalculationService {
      * Calculates price for the "character_explains_v1" template.
      * Counts characters from the dialog text only.
      */
-    private ContentPriceResponse calculateCharacterExplainsPrice(JsonNode params) {
+    private ContentPriceV1 calculateCharacterExplainsPrice(JsonNode params) {
         int totalChars = 0;
 
         if (params.path("dialogue").isArray()) {
@@ -68,7 +69,7 @@ public class PriceCalculationService {
      * Core calculation based on total characters.
      * Price is 7 cents per 1000 characters, rounded up.
      */
-    private ContentPriceResponse calculatePriceFromChars(int totalChars) {
+    private ContentPriceV1 calculatePriceFromChars(int totalChars) {
         if (totalChars == 0) {
             return buildPriceResponse(0);
         }
@@ -85,10 +86,7 @@ public class PriceCalculationService {
     /**
      * Helper to build the final response object.
      */
-    private ContentPriceResponse buildPriceResponse(int priceInCents) {
-        return ContentPriceResponse.builder()
-                .finalPrice(priceInCents)
-                .currency(PriceCalculationService.CURRENCY)
-                .build();
+    private ContentPriceV1 buildPriceResponse(int priceInCents) {
+        return new ContentPriceV1(priceInCents, CURRENCY);
     }
 }

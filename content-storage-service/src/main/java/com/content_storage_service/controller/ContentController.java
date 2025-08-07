@@ -3,6 +3,7 @@ package com.content_storage_service.controller;
 import com.content_storage_service.model.Content;
 import com.content_storage_service.service.ContentService;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.shortscreator.shared.dto.ContentPriceV1;
 import com.shortscreator.shared.enums.ContentStatus;
 
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import com.content_storage_service.dto.ContentCreationRequest; // DTO for creating a new content draft
-import com.content_storage_service.dto.ContentPriceResponse;
 
 import org.springframework.web.server.ResponseStatusException; // For throwing HTTP errors
 
@@ -65,10 +65,7 @@ public class ContentController {
     @PostMapping("/{contentId}/generate")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public Mono<Content> submitContentForGeneration(@PathVariable String contentId, @RequestHeader("X-User-ID") String userId) {
-        return contentService.submitForGeneration(contentId, userId)
-                .onErrorResume(IllegalStateException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage())))
-                .onErrorResume(IllegalArgumentException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage())));
-                //.onErrorResume(e -> Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error submitting content for generation.", e)));
+        return contentService.submitForGeneration(contentId, userId);
     }
 
     // New endpoint to delete content
@@ -88,7 +85,7 @@ public class ContentController {
      */
     @GetMapping("/{contentId}/price")
     @ResponseStatus(HttpStatus.OK)
-    public Mono<ContentPriceResponse> getDraftPrice(
+    public Mono<ContentPriceV1> getDraftPrice(
             @PathVariable String contentId,
             @RequestHeader("X-User-ID") String userId) {
         return contentService.calculateDraftPrice(contentId, userId)

@@ -30,3 +30,7 @@ app:
       location: "${user.home}/app-dev/permanent-local-storage"
       # This is the public-facing URL prefix for content stored here.
       base-url: "http://localhost:8083/content/" # Assuming CSS runs on 8083
+  services:
+    payment-service:
+      # URL for the payment service, used by the CSS to manage user balances.
+      url: "http://localhost:8087"

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import apiClient from '@/lib/apiClient';
+import apiClient, { ApiError } from '@/lib/apiClient';
 import { RedditStoryEditor } from '@/components/editors/RedditStoryEditor';
 import { CharacterExplainsEditor } from '@/components/editors/CharacterExplainsEditor'; // Import new editor component
 import { Draft } from '@/types/drafts';
@@ -36,6 +36,9 @@ export default function EditorPage() {
 
   // State to hold the approximate price in cents
   const [approximatePrice, setApproximatePrice] = useState(0);
+
+  // State to hold any generation errors
+  const [generationError, setGenerationError] = useState<ApiError | null>(null);
   
   // Ref to communicate with the child editor component
   const editorRef = useRef<EditorHandle>(null);
@@ -108,7 +111,7 @@ export default function EditorPage() {
   const handleSaveClick = async () => {
     const latestParams = editorRef.current?.getValidatedData();
     if (latestParams) {
-      const wasNewDraft = !(draft && 'id' in draft && draft.id);
+      const wasNewDraft = !(draftData && 'id' in draftData && draftData.id);
       const savedDraft = await handleSave(latestParams);
 
       // If it was a new draft, we need to update the URL
@@ -123,7 +126,7 @@ export default function EditorPage() {
     console.log("Generating content with latest params...");
     const latestParams = editorRef.current?.getValidatedData();
     if (!latestParams) {
-      console.error("Validation failed, cannot generate content.");
+      console.warn("Validation failed, cannot generate content.");
       return; // Validation failed in child
     }
 
@@ -147,12 +150,19 @@ export default function EditorPage() {
 
   const handleConfirmGeneration = async () => {
     if (draftData && 'id' in draftData && draftData.id) {
+      setGenerationError(null); // Clear previous errors
       try {
         await apiClient.post(`/content/${draftData.id}/generate`);
         router.push('/content');
       } catch (error) {
-        console.error("Failed to submit draft for generation:", error);
-        setIsDialogOpen(false);
+        console.warn("Failed to submit draft for generation:", error);
+        if (error instanceof ApiError) {
+          setGenerationError(error); // Set the structured error
+        } else {
+          // Create a generic error for unexpected issues
+          setGenerationError(ApiError.createDefault());
+        }
+        //setIsDialogOpen(false);
       }
     }
   };
@@ -201,6 +211,7 @@ export default function EditorPage() {
         onConfirm={handleConfirmGeneration}
         priceInCents={priceData?.finalPrice}
         currency={priceData?.currency}
+        error={generationError} // Pass error to dialog
       />
     </div>
   );

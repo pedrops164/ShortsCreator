@@ -1,10 +1,12 @@
 package com.payment_service.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.payment_service.dto.DebitRequest;
 import com.payment_service.exception.InsufficientFundsException;
 import com.payment_service.model.UserBalance;
 import com.payment_service.service.BalanceService;
+import com.shortscreator.shared.dto.ContentPriceV1;
+import com.shortscreator.shared.dto.DebitRequestV1;
+import com.shortscreator.shared.enums.ContentType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -54,8 +56,10 @@ class BalanceControllerTest {
     @Test
     void givenValidDebitRequest_whenDebitBalance_thenReturnsOk() throws Exception {
         // Given
-        DebitRequest debitRequest = new DebitRequest(USER_ID, 1000L, "USD");
-        doNothing().when(balanceService).debitUserBalance(any(DebitRequest.class));
+        ContentPriceV1 priceDetails = new ContentPriceV1(1000, "USD");
+        DebitRequestV1 debitRequest = new DebitRequestV1(USER_ID, priceDetails, ContentType.REDDIT_STORY);
+        
+        doNothing().when(balanceService).debitUserBalance(any(DebitRequestV1.class));
 
         // When & Then
         mockMvc.perform(post("/api/v1/balance/debit")
@@ -67,14 +71,16 @@ class BalanceControllerTest {
     @Test
     void givenInsufficientFunds_whenDebitBalance_thenReturnsError() throws Exception {
         // Given
-        DebitRequest debitRequest = new DebitRequest(USER_ID, 1000L, "USD");
+        ContentPriceV1 priceDetails = new ContentPriceV1(1000, "USD");
+        DebitRequestV1 debitRequest = new DebitRequestV1(USER_ID, priceDetails, ContentType.REDDIT_STORY);
+        
         doThrow(new InsufficientFundsException("Not enough money"))
-            .when(balanceService).debitUserBalance(any(DebitRequest.class));
+            .when(balanceService).debitUserBalance(any(DebitRequestV1.class));
 
         // When & Then
         mockMvc.perform(post("/api/v1/balance/debit")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(debitRequest)))
-            .andExpect(status().isConflict()); // Or whatever status your handler returns
+            .andExpect(status().isConflict()); // Assuming @ControllerAdvice maps this to 409 Conflict
     }
 }

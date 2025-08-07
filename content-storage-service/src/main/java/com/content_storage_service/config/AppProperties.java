@@ -36,4 +36,18 @@ public class AppProperties {
         @NotEmpty
         private String generationResult;
     }
+
+    // Properties for Services configuration
+    private Services services = new Services();
+
+    @Data
+    public static class Services {
+        private PaymentService paymentService = new PaymentService();
+    }
+
+    @Data
+    public static class PaymentService {
+        @NotEmpty
+        private String url; // URL for the payment service, used by the CSS to manage user balances.
+    }
 }

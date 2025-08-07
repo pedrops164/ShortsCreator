@@ -6,9 +6,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.payment_service.dto.DebitRequest;
 import com.payment_service.model.UserBalance;
 import com.payment_service.repository.UserBalanceRepository;
+import com.shortscreator.shared.dto.DebitRequestV1;
 import com.payment_service.exception.InsufficientFundsException;
 import com.payment_service.exception.ResourceNotFoundException;
 
@@ -59,11 +59,12 @@ public class BalanceService {
      * @throws IllegalArgumentException if the debit currency does not match the user's balance currency.
      */
     @Transactional
-    public void debitUserBalance(DebitRequest debitRequest) {
+    public void debitUserBalance(DebitRequestV1 debitRequest) {
         String userId = debitRequest.userId();
-        long amountToDebit = debitRequest.amount();
+        long amountToDebit = debitRequest.priceDetails().finalPrice();
+        String currency = debitRequest.priceDetails().currency();
 
-        log.info("Attempting to debit {} {} from user ID: {}", amountToDebit, debitRequest.currency(), userId);
+        log.info("Attempting to debit {} {} from user ID: {} for content type: {}", amountToDebit, currency, userId, debitRequest.contentType());
 
         // This read operation is locked by the transaction until it commits or rolls back.
         UserBalance userBalance = userBalanceRepository.findByUserId(userId)
@@ -73,9 +74,9 @@ public class BalanceService {
             });
 
         // Validate Currency
-        if (!userBalance.getCurrency().equals(debitRequest.currency())) {
+        if (!userBalance.getCurrency().equals(currency)) {
             log.error("Debit failed for user {}: Currency mismatch. Account is in {} but debit was for {}",
-                userId, userBalance.getCurrency(), debitRequest.currency());
+                userId, userBalance.getCurrency(), currency);
             throw new IllegalArgumentException("Debit currency does not match account currency.");
         }
 

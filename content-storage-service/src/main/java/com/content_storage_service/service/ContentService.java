@@ -1,7 +1,9 @@
 package com.content_storage_service.service;
 
+import com.content_storage_service.client.PaymentServiceClient;
 import com.content_storage_service.config.AppProperties;
-import com.content_storage_service.dto.ContentPriceResponse;
+import com.content_storage_service.exception.InsufficientFundsClientException;
+import com.content_storage_service.exception.PaymentServiceInternalErrorException;
 import com.content_storage_service.model.Content;
 import com.shortscreator.shared.enums.ContentType;
 import com.shortscreator.shared.validation.TemplateValidator;
@@ -9,6 +11,7 @@ import com.shortscreator.shared.validation.TemplateValidator.ValidationException
 import com.shortscreator.shared.enums.ContentStatus;
 import com.content_storage_service.repository.ContentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.shortscreator.shared.dto.ContentPriceV1;
 import com.shortscreator.shared.dto.GenerationRequestV1;
 import com.shortscreator.shared.dto.GenerationResultV1;
 import com.shortscreator.shared.dto.OutputAssetsV1;
@@ -33,13 +36,14 @@ import lombok.extern.slf4j.Slf4j;
 public class ContentService {
 
     private final ContentRepository contentRepository;
-    private final TemplateValidator templateValidator; // Inject validator bean
+    private final TemplateValidator templateValidator;
 
-    private final RabbitTemplate rabbitTemplate; // Inject RabbitTemplate
-    private final AppProperties appProperties; // Inject the properties bean
+    private final RabbitTemplate rabbitTemplate;
+    private final AppProperties appProperties;
     private final VideoUploadProcessorService processorService;
-    private final Map<String, ContentType> templateToContentTypeMap; // Inject the map
+    private final Map<String, ContentType> templateToContentTypeMap;
     private final PriceCalculationService priceCalculationService;
+    private final PaymentServiceClient paymentServiceClient;
 
     /**
      * Creates a new content draft.
@@ -161,47 +165,77 @@ public class ContentService {
      */
     public Mono<Content> submitForGeneration(String contentId, String userId) {
         log.info("User [{}] attempting to submit content [{}] for generation", userId, contentId);
-        return contentRepository.findByIdAndUserId(contentId, userId)
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("Draft not found")))
-                .flatMap(content -> {
-                    if (content.getStatus() != ContentStatus.DRAFT) {
-                        log.warn("Submission failed: Content [{}] for user [{}] is not a DRAFT (status: {})", contentId, userId, content.getStatus());
-                        return Mono.error(new IllegalStateException("Only DRAFTs can be submitted for generation. Current status: " + content.getStatus()));
-                    }
 
-                    try {
-                        log.debug("Performing final validation for content [{}]", contentId);
-                        templateValidator.validate(content.getTemplateId(), content.getTemplateParams(), true);
-                    } catch (ValidationException e) {
-                        log.error("Final validation failed for content [{}]. Setting status to FAILED. Reason: {}", contentId, e.getMessage());
-                        content.setStatus(ContentStatus.FAILED);
-                        content.setErrorMessage("Final validation failed: " + e.getMessage());
-                        return contentRepository.save(content)
-                            .then(Mono.error(new IllegalArgumentException("Draft is not valid for generation.")));
-                    }
-                    content.setStatus(ContentStatus.PROCESSING);
-                    log.info("Content [{}] passed final validation. Setting status to PROCESSING.", contentId);
-                    // Save the content with updated status, and send a message to the Content Generation Service
-                    return contentRepository.save(content)
-                            .doOnSuccess(processingContent -> {
-                                // 3. Create the DTO for the message
-                                GenerationRequestV1 request = new GenerationRequestV1(
-                                    processingContent.getId(),
-                                    processingContent.getUserId(),
-                                    processingContent.getTemplateId(),
-                                    processingContent.getTemplateParams()
-                                );
+        // Fetch the content draft
+        Mono<Content> contentMono = contentRepository.findByIdAndUserId(contentId, userId)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Draft not found or unauthorized")));
 
-                                // 4. Construct routing key and send message
-                                String routingKey = appProperties.getRabbitmq().getRoutingKeys().getGenerationRequestPrefix() + processingContent.getTemplateId(); // e.g., "request.generate.reddit_story_v1"
-                                String exchangeName = appProperties.getRabbitmq().getExchange(); // e.g., "content_generation_exchange"
-                                log.debug("Preparing to send generation request for content [{}]. Routing Key: {}", processingContent.getId(), routingKey);
-                                rabbitTemplate.convertAndSend(exchangeName, routingKey, request);
-                                log.info("Sent generation request for contentId [{}] with routingKey: {}", processingContent.getId(), routingKey);
-                            });
-                })
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("Content not found or unauthorized for ID: " + contentId)));
+        return contentMono.flatMap(content -> {
+            if (content.getStatus() != ContentStatus.DRAFT) {
+                log.warn("Submission failed: Content [{}] for user [{}] is not a DRAFT (status: {})", contentId, userId, content.getStatus());
+                return Mono.error(new IllegalStateException("Only DRAFTs can be submitted for generation. Current status: " + content.getStatus()));
+            }
+
+            try {
+                // Perform final validation
+                log.debug("Performing final validation for content [{}]", contentId);
+                templateValidator.validate(content.getTemplateId(), content.getTemplateParams(), true);
+            } catch (ValidationException e) {
+                log.error("Final validation failed for content [{}]. Reason: {}", contentId, e.getMessage());
+                return Mono.error(new IllegalArgumentException("Draft is not valid for generation."));
+            }
+
+            // Calculate the Price to generate the draft
+            log.info("Content [{}] passed validation. Calculating price.", contentId);
+            ContentPriceV1 priceResponse;
+            try {
+                priceResponse = priceCalculationService.calculatePrice(content);
+            } catch (Exception e) {
+                return Mono.error(new IllegalStateException("Failed to calculate price: " + e.getMessage()));
+            }
+            log.info("Calculated price for content [{}] is {} cents. Currency: {}", contentId, priceResponse.finalPrice(), priceResponse.currency());
+
+            // Debit the User's Account
+            return paymentServiceClient.debitForGeneration(userId, priceResponse, content.getContentType())
+                    .then(Mono.just(content)); // Pass the 'content' object down the chain on success
+        })
+        .flatMap(content -> {
+            // Queue for Generation (This block only runs if payment was successful)
+            content.setStatus(ContentStatus.PROCESSING);
+            log.info("Debit successful. Setting content [{}] status to PROCESSING.", content.getId());
+            return contentRepository.save(content)
+                .doOnSuccess(processingContent -> {
+                    GenerationRequestV1 request = new GenerationRequestV1(
+                        processingContent.getId(),
+                        processingContent.getUserId(),
+                        processingContent.getTemplateId(),
+                        processingContent.getTemplateParams()
+                    );
+                    String routingKey = appProperties.getRabbitmq().getRoutingKeys().getGenerationRequestPrefix() + processingContent.getTemplateId();
+                    String exchangeName = appProperties.getRabbitmq().getExchange();
+                    rabbitTemplate.convertAndSend(exchangeName, routingKey, request);
+                    log.info("Sent generation request for contentId [{}] with routingKey: {}", processingContent.getId(), routingKey);
+                });
+        });
+        /* .onErrorResume(e -> {
+            // Error Handling
+            log.warn("Submission flow failed for content [{}], user [{}]. Reason: {}", contentId, userId, e.getMessage());
+            // For known business errors, return a clear message to the frontend.
+            if (e instanceof InsufficientFundsClientException) {
+                // For insufficient funds, return a clear message to the frontend.
+                return Mono.error(new ResponseStatusException(HttpStatus.CONFLICT, "Insufficient funds for this operation."));
+            } else if (e instanceof PaymentServiceInternalErrorException) {
+                // For payment service errors, return a clear message to the frontend.
+                return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Payment service is currently unavailable."));
+            } else if (e instanceof IllegalArgumentException || e instanceof IllegalStateException) {
+                // The content status remains DRAFT as it was never updated.
+                return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage()));
+            }
+            // For unexpected errors
+            return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred."));
+        }); */
     }
+
     /**
      * Processes the result of a content generation request.
      * This updates the content status based on the GenerationResultV1 received.
@@ -259,7 +293,7 @@ public class ContentService {
                 .then(); // Convert Mono<Content> from delete(content) to Mono<Void>
     }
 
-    public Mono<ContentPriceResponse> calculateDraftPrice(String contentId, String userId) {
+    public Mono<ContentPriceV1> calculateDraftPrice(String contentId, String userId) {
         return contentRepository.findByIdAndUserId(contentId, userId)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Content not found with ID: " + contentId)))
                 .flatMap(content -> {
@@ -267,7 +301,7 @@ public class ContentService {
                         return Mono.error(new IllegalStateException("Price can only be calculated for drafts. Current status: " + content.getStatus()));
                     }
                     try {
-                        ContentPriceResponse priceResponse = priceCalculationService.calculatePrice(content);
+                        ContentPriceV1 priceResponse = priceCalculationService.calculatePrice(content);
                         return Mono.just(priceResponse);
                     } catch (IllegalArgumentException e) {
                         return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage()));

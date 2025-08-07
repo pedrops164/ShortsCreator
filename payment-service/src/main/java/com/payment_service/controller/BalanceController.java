@@ -1,9 +1,9 @@
 package com.payment_service.controller;
 
 import com.payment_service.dto.BalanceResponse;
-import com.payment_service.dto.DebitRequest;
 import com.payment_service.model.UserBalance;
 import com.payment_service.service.BalanceService;
+import com.shortscreator.shared.dto.DebitRequestV1;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -41,7 +41,7 @@ public class BalanceController {
      * This endpoint must NOT be exposed by the API Gateway.
      */
     @PostMapping("/debit")
-    public ResponseEntity<Void> debitBalance(@RequestBody DebitRequest debitRequest) {
+    public ResponseEntity<Void> debitBalance(@RequestBody DebitRequestV1 debitRequest) {
         // Delegate the entire debit operation to the service layer.
         balanceService.debitUserBalance(debitRequest);
         
