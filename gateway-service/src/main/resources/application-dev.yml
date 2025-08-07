@@ -50,21 +50,40 @@ spring:
                 # This applies our filter that adds the X-User-ID header
                 - AddUserIdHeader
 
-            # Route for private Payment Service endpoints
-            - id: payment-service-private
-              uri: http://localhost:8087 # Internal network address
+            # Route for fetching the user's balance.
+            - id: ps-get-balance
+              uri: http://localhost:8087
               predicates:
-                - Path=/api/v1/payments/**, /api/v1/balance/**, /api/v1/transactions/**
+                - Path=/api/v1/balance
+                - Method=GET
               filters:
-                # This applies our filter that adds the X-User-ID header
+                - AddUserIdHeader
+              # Other routes on /balance are private and not exposed to users.
+
+            # Route for creating a Stripe checkout session.
+            - id: ps-create-checkout
+              uri: http://localhost:8087
+              predicates:
+                - Path=/api/v1/payments/create-checkout-session
+                - Method=POST
+              filters:
                 - AddUserIdHeader
 
-            # PUBLIC route for the Stripe webhook
-            - id: payment-service-webhook-public
-              uri: http://localhost:8087 # Still points to the same internal service
+            # Route for fetching the unified transaction history.
+            - id: ps-get-transactions
+              uri: http://localhost:8087
               predicates:
-                # This route ONLY matches the webhook path
+                - Path=/api/v1/transactions
+                - Method=GET
+              filters:
+                - AddUserIdHeader
+
+            # Public unauthenticated route for the Stripe webhook
+            - id: ps-webhook-public
+              uri: http://localhost:8087
+              predicates:
                 - Path=/api/v1/stripe/webhooks
+                - Method=POST
               # There are no authentication filters on this route
           globalcors:
             cors-configurations:
