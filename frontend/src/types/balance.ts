@@ -20,18 +20,25 @@ export type TransactionStatus =
   | 'REFUNDED'
   | 'DISPUTED';
 
+export type TransactionType =
+  | 'DEPOSIT'
+  | 'CHARGE';
+
 /**
- * Defines the structure of a single payment transaction record
- * as returned by the backend API.
+ * Represents a unified view of a transaction,
+ * combining deposits and charges.
+ * This is used in the TransactionHistory component.
  */
-export interface PaymentTransactionResponse {
-  id: string; // UUID
-  amountPaid: number; // in cents
+export interface UnifiedTransaction {
+  id: string;
+  type: TransactionType;
+  description: string;
+  amount: number;
   currency: string;
   status: TransactionStatus;
-  createdAt: string; // ISO 8601 date string
-  paymentIntentId: string;
+  createdAt: string;
 }
+
 
 /*
   * Represents the structure of a payment status update event.

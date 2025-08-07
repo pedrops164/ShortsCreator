@@ -1,6 +1,7 @@
 package com.payment_service.controller;
 
-import com.payment_service.dto.PaymentTransactionResponse;
+import com.payment_service.dto.UnifiedTransactionView;
+import com.payment_service.enums.TransactionType;
 import com.payment_service.service.TransactionService;
 import com.shortscreator.shared.enums.TransactionStatus;
 import org.junit.jupiter.api.Test;
@@ -38,14 +39,14 @@ class TransactionControllerTest {
     void whenGetTransactions_thenReturnsPageOfTransactions() throws Exception {
         // Given
         UUID transactionId = UUID.randomUUID();
-        PaymentTransactionResponse txResponse = new PaymentTransactionResponse(
-            transactionId, 5000, "USD", TransactionStatus.COMPLETED, Instant.now(), "pi_123"
+        UnifiedTransactionView txResponse = new UnifiedTransactionView(
+            transactionId, TransactionType.DEPOSIT, "Balance Top-up", 5000, "USD", TransactionStatus.COMPLETED, Instant.now()
         );
-        Page<PaymentTransactionResponse> transactionPage = new PageImpl<>(
+        Page<UnifiedTransactionView> transactionPage = new PageImpl<>(
             List.of(txResponse), PageRequest.of(0, 5), 1
         );
 
-        when(transactionService.findTransactionsByUserId(eq(USER_ID), any(PageRequest.class)))
+        when(transactionService.findUnifiedTransactionsByUserId(eq(USER_ID), any(PageRequest.class)))
             .thenReturn(transactionPage);
 
         // When & Then
@@ -57,6 +58,6 @@ class TransactionControllerTest {
             .andExpect(jsonPath("$.totalElements").value(1))
             .andExpect(jsonPath("$.content").isArray())
             .andExpect(jsonPath("$.content[0].id").value(transactionId.toString()))
-            .andExpect(jsonPath("$.content[0].amountPaid").value(5000));
+            .andExpect(jsonPath("$.content[0].amount").value(5000));
     }
 }

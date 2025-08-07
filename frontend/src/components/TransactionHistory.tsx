@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import apiClient from '@/lib/apiClient';
-import { Page, PaymentTransactionResponse } from '@/types';
+import { Page, UnifiedTransaction } from '@/types';
 import { useNotifications } from '@/context/NotificationContext';
 
 // UI Components from shadcn/ui and lucide-react
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CreditCard, Plus, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { CreditCard, Plus, ChevronLeft, ChevronRight, AlertCircle, Minus } from 'lucide-react';
 
 // --- Helper Functions for Styling ---
 
@@ -83,8 +83,8 @@ const PaginationControls = ({ page, onPageChange }: { page: Page<any>, onPageCha
 // --- Main Component ---
 
 export default function TransactionHistory() {
-  const [transactions, setTransactions] = useState<PaymentTransactionResponse[]>([]);
-  const [pageData, setPageData] = useState<Page<PaymentTransactionResponse> | null>(null);
+  const [transactions, setTransactions] = useState<UnifiedTransaction[]>([]);
+  const [pageData, setPageData] = useState<Page<UnifiedTransaction> | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +94,7 @@ export default function TransactionHistory() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<Page<PaymentTransactionResponse>>('/transactions', {
+      const response = await apiClient.get<Page<UnifiedTransaction>>('/transactions', {
         params: { page, size: 5 }, // Fetches 5 items per page
       });
       setTransactions(response.data.content);
@@ -177,13 +177,17 @@ export default function TransactionHistory() {
                   <TableCell className="font-medium">{formatDate(tx.createdAt)}</TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
-                      <Plus className="h-4 w-4 text-muted-foreground" />
-                      <span>Balance Top-up</span>
+                      {tx.type === 'DEPOSIT' ? (
+                        <Plus className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Minus className="h-4 w-4 text-red-500" />
+                      )}
+                      <span>{tx.description}</span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="font-medium text-green-500">
-                      +${(tx.amountPaid / 100).toFixed(2)} {tx.currency.toUpperCase()}
+                    <span className={`font-medium ${tx.type === 'DEPOSIT' ? 'text-green-500' : 'text-red-500'}`}>
+                      {tx.type === 'DEPOSIT' ? '+' : '-'}${ (tx.amount / 100).toFixed(2) } {tx.currency.toUpperCase()}
                     </span>
                   </TableCell>
                   <TableCell>

@@ -6,11 +6,7 @@
 export interface Page<T> {
   content: T[];
   totalPages: number;
-  totalElements: number;
-  size: number;
   number: number; // The current page number (0-indexed)
   first: boolean;
   last: boolean;
-  numberOfElements: number;
-  empty: boolean;
 }
