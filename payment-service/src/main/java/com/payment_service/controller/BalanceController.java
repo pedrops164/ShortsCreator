@@ -4,6 +4,7 @@ import com.payment_service.dto.BalanceResponse;
 import com.payment_service.model.UserBalance;
 import com.payment_service.service.BalanceService;
 import com.shortscreator.shared.dto.DebitRequestV1;
+import com.shortscreator.shared.dto.RefundRequestV1;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -47,6 +48,16 @@ public class BalanceController {
         
         // A 200 OK response indicates the debit was successful.
         // The service will throw an exception (handled by a @ControllerAdvice) if funds are insufficient.
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Internal-facing endpoint for refunding a generation charge.
+     * This endpoint must NOT be exposed by the API Gateway.
+     */
+    @PostMapping("/refund")
+    public ResponseEntity<Void> refundCharge(@RequestBody RefundRequestV1 refundRequest) {
+        balanceService.refundGenerationCharge(refundRequest.contentId());
         return ResponseEntity.ok().build();
     }
 }

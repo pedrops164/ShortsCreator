@@ -196,7 +196,7 @@ public class ContentService {
             log.info("Calculated price for content [{}] is {} cents. Currency: {}", contentId, priceResponse.finalPrice(), priceResponse.currency());
 
             // Debit the User's Account
-            return paymentServiceClient.debitForGeneration(userId, priceResponse, content.getContentType())
+            return paymentServiceClient.debitForGeneration(userId, contentId, priceResponse, content.getContentType())
                     .then(Mono.just(content)); // Pass the 'content' object down the chain on success
         })
         .flatMap(content -> {
@@ -217,23 +217,6 @@ public class ContentService {
                     log.info("Sent generation request for contentId [{}] with routingKey: {}", processingContent.getId(), routingKey);
                 });
         });
-        /* .onErrorResume(e -> {
-            // Error Handling
-            log.warn("Submission flow failed for content [{}], user [{}]. Reason: {}", contentId, userId, e.getMessage());
-            // For known business errors, return a clear message to the frontend.
-            if (e instanceof InsufficientFundsClientException) {
-                // For insufficient funds, return a clear message to the frontend.
-                return Mono.error(new ResponseStatusException(HttpStatus.CONFLICT, "Insufficient funds for this operation."));
-            } else if (e instanceof PaymentServiceInternalErrorException) {
-                // For payment service errors, return a clear message to the frontend.
-                return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Payment service is currently unavailable."));
-            } else if (e instanceof IllegalArgumentException || e instanceof IllegalStateException) {
-                // The content status remains DRAFT as it was never updated.
-                return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage()));
-            }
-            // For unexpected errors
-            return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred."));
-        }); */
     }
 
     /**
@@ -268,6 +251,11 @@ public class ContentService {
                 } else if (newStatus == ContentStatus.FAILED) {
                     log.error("Content [{}] has FAILED processing. Reason: {}", content.getId(), generationResult.getErrorMessage());
                     content.setErrorMessage(generationResult.getErrorMessage());
+                    // Refund the user if the content generation failed
+                    paymentServiceClient.requestRefund(content.getId())
+                            .doOnError(e -> log.error("CRITICAL: Refund request failed for contentId {}: {}", content.getId(), e.getMessage()))
+                            .doOnSuccess(s -> log.info("Refund request successfully sent for contentId {}", content.getId()))
+                            .subscribe(); // Fire-and-forget the refund call
                 }
                 
                 return contentRepository.save(content)

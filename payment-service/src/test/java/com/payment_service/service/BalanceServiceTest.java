@@ -73,7 +73,7 @@ class BalanceServiceTest {
         String userId = "user-123";
         long initialBalance = 1000L;
         ContentPriceV1 price = new ContentPriceV1(400, "USD");
-        DebitRequestV1 request = new DebitRequestV1(userId, price, ContentType.REDDIT_STORY);
+        DebitRequestV1 request = new DebitRequestV1(userId, "content-1", price, ContentType.REDDIT_STORY);
         
         UserBalance userBalance = new UserBalance(userId);
         userBalance.setBalanceInCents(initialBalance);
@@ -90,7 +90,7 @@ class BalanceServiceTest {
     void givenUserNotFound_whenDebitUserBalance_thenThrowsResourceNotFoundException() {
         String userId = "non-existent-user";
         ContentPriceV1 price = new ContentPriceV1(100, "USD");
-        DebitRequestV1 request = new DebitRequestV1(userId, price, ContentType.REDDIT_STORY);
+        DebitRequestV1 request = new DebitRequestV1(userId, "content-1", price, ContentType.REDDIT_STORY);
 
         when(userBalanceRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
@@ -102,7 +102,7 @@ class BalanceServiceTest {
     void givenCurrencyMismatch_whenDebitUserBalance_thenThrowsIllegalArgumentException() {
         String userId = "user-123";
         ContentPriceV1 price = new ContentPriceV1(100, "EUR"); // Request in EUR
-        DebitRequestV1 request = new DebitRequestV1(userId, price, ContentType.REDDIT_STORY);
+        DebitRequestV1 request = new DebitRequestV1(userId, "content-1", price, ContentType.REDDIT_STORY);
 
         UserBalance userBalance = new UserBalance(userId);
         userBalance.setCurrency("USD"); // Balance in USD
@@ -117,7 +117,7 @@ class BalanceServiceTest {
     void givenInsufficientFunds_whenDebitUserBalance_thenThrowsInsufficientFundsException() {
         String userId = "user-123";
         ContentPriceV1 price = new ContentPriceV1(5000, "USD");
-        DebitRequestV1 request = new DebitRequestV1(userId, price, ContentType.REDDIT_STORY);
+        DebitRequestV1 request = new DebitRequestV1(userId, "content-1", price, ContentType.REDDIT_STORY);
 
         UserBalance userBalance = new UserBalance(userId);
         userBalance.setBalanceInCents(4999L);

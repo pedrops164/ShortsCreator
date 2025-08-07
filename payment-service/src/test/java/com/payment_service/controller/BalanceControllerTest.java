@@ -57,7 +57,7 @@ class BalanceControllerTest {
     void givenValidDebitRequest_whenDebitBalance_thenReturnsOk() throws Exception {
         // Given
         ContentPriceV1 priceDetails = new ContentPriceV1(1000, "USD");
-        DebitRequestV1 debitRequest = new DebitRequestV1(USER_ID, priceDetails, ContentType.REDDIT_STORY);
+        DebitRequestV1 debitRequest = new DebitRequestV1(USER_ID, "content-1", priceDetails, ContentType.REDDIT_STORY);
         
         doNothing().when(balanceService).debitUserBalance(any(DebitRequestV1.class));
 
@@ -72,7 +72,7 @@ class BalanceControllerTest {
     void givenInsufficientFunds_whenDebitBalance_thenReturnsError() throws Exception {
         // Given
         ContentPriceV1 priceDetails = new ContentPriceV1(1000, "USD");
-        DebitRequestV1 debitRequest = new DebitRequestV1(USER_ID, priceDetails, ContentType.REDDIT_STORY);
+        DebitRequestV1 debitRequest = new DebitRequestV1(USER_ID, "content-1", priceDetails, ContentType.REDDIT_STORY);
         
         doThrow(new InsufficientFundsException("Not enough money"))
             .when(balanceService).debitUserBalance(any(DebitRequestV1.class));

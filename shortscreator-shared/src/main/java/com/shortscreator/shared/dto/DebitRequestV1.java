@@ -10,6 +10,7 @@ import com.shortscreator.shared.enums.ContentType;
  */
 public record DebitRequestV1(
     String userId,
+    String contentId,
     ContentPriceV1 priceDetails,
     ContentType contentType
 ) {}

@@ -1,26 +1,28 @@
 package com.payment_service.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.payment_service.model.GenerationCharge;
 import com.payment_service.model.UserBalance;
+import com.payment_service.repository.GenerationChargeRepository;
 import com.payment_service.repository.UserBalanceRepository;
 import com.shortscreator.shared.dto.DebitRequestV1;
+import com.shortscreator.shared.enums.ChargeStatus;
 import com.payment_service.exception.InsufficientFundsException;
 import com.payment_service.exception.ResourceNotFoundException;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class BalanceService {
 
     private final UserBalanceRepository userBalanceRepository;
-
-    public BalanceService(UserBalanceRepository userBalanceRepository) {
-        this.userBalanceRepository = userBalanceRepository;
-    }
+    private final GenerationChargeRepository generationChargeRepository;
 
     /**
      * Retrieves the balance for a specific user. If the user has no balance record,
@@ -92,6 +94,61 @@ public class BalanceService {
         userBalance.setBalanceInCents(newBalance);
         userBalanceRepository.save(userBalance); // The transaction commit will persist this change.
 
-        log.info("Successfully debited {} from user {}. New balance: {}", amountToDebit, userId, newBalance);
+        // Create and save the generation charge record
+        GenerationCharge charge = GenerationCharge.builder()
+                .userId(debitRequest.userId())
+                .contentId(debitRequest.contentId())
+                .contentType(debitRequest.contentType())
+                .amount(debitRequest.priceDetails().finalPrice())
+                .currency(debitRequest.priceDetails().currency())
+                .status(ChargeStatus.COMPLETED)
+                .build();
+        generationChargeRepository.save(charge);
+        
+        log.info("Successfully debited user {} and recorded charge for content {}", userId, debitRequest.contentId());
+    }
+
+    /**
+     * Refunds a generation charge by content ID. This operation credits the user's balance
+     * and updates the charge status to REFUNDED.
+     *
+     * @param contentId The unique ID of the content for which the charge is being refunded.
+     * @throws ResourceNotFoundException if the GenerationCharge or UserBalance is not found.
+     */
+    @Transactional
+    public void refundGenerationCharge(String contentId) {
+        log.info("Attempting to refund charge for contentId: {}", contentId);
+
+        // Find the original charge.
+        GenerationCharge charge = generationChargeRepository.findByContentId(contentId)
+                .orElseThrow(() -> {
+                    log.error("Refund failed for contentId {}: GenerationCharge not found.", contentId);
+                    return new ResourceNotFoundException("GenerationCharge not found for contentId: " + contentId);
+                });
+
+        // IDEMPOTENCY CHECK: If it's already refunded, do nothing and succeed.
+        if (charge.getStatus() == ChargeStatus.REFUNDED) {
+            log.warn("Charge for contentId {} has already been refunded. Ignoring request.", contentId);
+            return;
+        }
+
+        // Find the user's balance to credit the amount back.
+        UserBalance userBalance = userBalanceRepository.findByUserId(charge.getUserId())
+                .orElseThrow(() -> {
+                    log.error("Refund failed for contentId {}: UserBalance not found.", contentId);
+                    return new ResourceNotFoundException("UserBalance not found for user: " + charge.getUserId());
+                });
+
+        // Perform the refund (credit the user's balance).
+        long newBalance = userBalance.getBalanceInCents() + charge.getAmount();
+        userBalance.setBalanceInCents(newBalance);
+        userBalanceRepository.save(userBalance);
+
+        // Update the charge status to REFUNDED.
+        charge.setStatus(ChargeStatus.REFUNDED);
+        generationChargeRepository.save(charge);
+
+        log.info("Successfully refunded {} {} to user {} for failed contentId {}. New balance: {}",
+                charge.getAmount(), charge.getCurrency(), charge.getUserId(), contentId, newBalance);
     }
 }

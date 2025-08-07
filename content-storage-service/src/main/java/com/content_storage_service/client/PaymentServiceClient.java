@@ -5,6 +5,7 @@ import com.content_storage_service.exception.PaymentServiceInternalErrorExceptio
 import com.shortscreator.shared.dto.ContentPriceV1;
 import com.shortscreator.shared.dto.DebitRequestV1;
 import com.shortscreator.shared.dto.ErrorResponse;
+import com.shortscreator.shared.dto.RefundRequestV1;
 import com.shortscreator.shared.enums.ContentType;
 
 import org.springframework.http.HttpStatus;
@@ -22,8 +23,8 @@ public class PaymentServiceClient {
         this.webClient = paymentServiceWebClient;
     }
 
-    public Mono<Void> debitForGeneration(String userId, ContentPriceV1 priceResponse, ContentType contentType) {
-        DebitRequestV1 debitRequest = new DebitRequestV1(userId, priceResponse, contentType);
+    public Mono<Void> debitForGeneration(String userId, String contentId, ContentPriceV1 priceResponse, ContentType contentType) {
+        DebitRequestV1 debitRequest = new DebitRequestV1(userId, contentId, priceResponse, contentType);
 
         return webClient.post()
                 .uri("/api/v1/balance/debit")
@@ -47,6 +48,16 @@ public class PaymentServiceClient {
                                 return Mono.error(new PaymentServiceInternalErrorException(errorMessage));
                             });
                 })
+                .bodyToMono(Void.class);
+    }
+    
+    public Mono<Void> requestRefund(String contentId) {
+        RefundRequestV1 refundRequest = new RefundRequestV1(contentId);
+        return webClient.post()
+                .uri("/api/v1/balance/refund")
+                .bodyValue(refundRequest)
+                .retrieve()
+                //.onStatus(HttpStatusCode::isError, response -> /* ... handle errors ... */)
                 .bodyToMono(Void.class);
     }
 }
