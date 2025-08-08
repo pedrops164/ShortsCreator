@@ -24,6 +24,8 @@ public class BalanceService {
     private final UserBalanceRepository userBalanceRepository;
     private final GenerationChargeRepository generationChargeRepository;
 
+    private static final long WELCOME_CREDIT_IN_CENTS = 100L; // $1.00
+
     /**
      * Retrieves the balance for a specific user. If the user has no balance record,
      * it creates one with a zero balance in the default currency (USD).
@@ -150,5 +152,21 @@ public class BalanceService {
 
         log.info("Successfully refunded {} {} to user {} for failed contentId {}. New balance: {}",
                 charge.getAmount(), charge.getCurrency(), charge.getUserId(), contentId, newBalance);
+    }
+
+    @Transactional
+    public void createNewUserBalanceWithWelcomeCredit(String userId) {
+        // IDEMPOTENCY CHECK: Do not create a balance if one already exists.
+        if (userBalanceRepository.findByUserId(userId).isPresent()) {
+            log.warn("Attempted to create a balance for existing user ID: {}. Ignoring event.", userId);
+            return;
+        }
+
+        log.info("Creating new balance for user ID: {} with a welcome credit of {} cents.", userId, WELCOME_CREDIT_IN_CENTS);
+        UserBalance newBalance = new UserBalance(userId);
+        newBalance.setBalanceInCents(WELCOME_CREDIT_IN_CENTS);
+        
+        userBalanceRepository.save(newBalance);
+        log.info("Successfully created balance for user ID: {}", userId);
     }
 }

@@ -1,0 +1,9 @@
+app:
+  rabbitmq:
+    host: "rabbitmq" # cant be localhost because localhost refers to the container itself
+    port: 5672
+    username: "user"
+    password: "password"
+    virtualHost: "/"
+    exchangeName: "keycloak_exchange"
+    newUserRoutingKey: "user.new"

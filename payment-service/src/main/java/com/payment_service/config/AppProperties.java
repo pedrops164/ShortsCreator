@@ -23,12 +23,24 @@ public class AppProperties {
         @NotEmpty
         private String paymentExchange;
         @NotEmpty
+        private String keycloakExchange;
+        @NotEmpty
+        private Queues queues = new Queues();
+        @NotEmpty
         private RoutingKeys routingKeys = new RoutingKeys();
+    }
+
+    @Data
+    public static class Queues {
+        @NotEmpty
+        private String newUser; // e.g., "q.user.new"
     }
 
     @Data
     public static class RoutingKeys {
         @NotEmpty
         private String paymentStatus; // e.g., "payment.status"
+        @NotEmpty
+        private String newUser; // e.g., "user.new"
     }
 }
