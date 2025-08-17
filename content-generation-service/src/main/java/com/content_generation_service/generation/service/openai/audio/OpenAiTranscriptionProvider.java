@@ -67,7 +67,7 @@ public class OpenAiTranscriptionProvider implements TranscriptionProvider {
         body.add("file", new FileSystemResource(audioFilePath));
         body.add("model", "whisper-1");
         body.add("response_format", "verbose_json");
-        body.add("timestamp_granularities[]", "segment"); // or word
+        body.add("timestamp_granularities[]", "word"); // word or segment
 
         return webClient.post()
                 .uri("/transcriptions")
@@ -112,17 +112,25 @@ public class OpenAiTranscriptionProvider implements TranscriptionProvider {
      */
     private List<WordTiming> parseTimingsFromResponse(JsonNode response) {
         List<WordTiming> timings = new ArrayList<>();
+        JsonNode textNode;
+        String textKey;
         if (response.has("segments")) {
-            for (JsonNode wordNode : response.get("segments")) {
-                String word = wordNode.get("text").asText();
-                double start = wordNode.get("start").asDouble();
-                double end = wordNode.get("end").asDouble();
-                timings.add(new WordTiming(word, start, end));
-            }
-            log.debug("Successfully parsed {} word timings from OpenAI response.", timings.size());
+            textNode = response.get("segments");
+            textKey = "text";
+        } else if (response.has("words")) {
+            textNode = response.get("words");
+            textKey = "word";
         } else {
             log.warn("OpenAI transcription response did not contain a 'segments' array. Full text: {}", response.get("text"));
+            throw new IllegalStateException("Unexpected OpenAI transcription response format: " + response);
         }
+        for (JsonNode wordNode : textNode) {
+            String word = wordNode.get(textKey).asText();
+            double start = wordNode.get("start").asDouble();
+            double end = wordNode.get("end").asDouble();
+            timings.add(new WordTiming(word, start, end));
+        }
+        log.debug("Successfully parsed {} word timings from OpenAI response.", timings.size());
         return timings;
     }
 }
