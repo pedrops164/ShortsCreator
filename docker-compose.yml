@@ -21,15 +21,12 @@ services:
       - RABBITMQ_DEFAULT_PASS=password
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-      
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.2
-    command: start-dev
-    environment:
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=admin
-    ports:
-      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s # Give RabbitMQ time to start before checking
 
   postgres:
     image: postgres:17.5
@@ -38,11 +35,52 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: payment_db
+      #POSTGRES_DB: payment_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data # Persist PostgreSQL data
+      # Mount the init script
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    command: start
+    environment:
+      # --- Credentials ---
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      # --- Database Configuration ---
+      - KC_DB=postgres
+      - KC_DB_URL_HOST=postgres
+      - KC_DB_URL_DATABASE=keycloak_db
+      - KC_DB_USERNAME=postgres
+      - KC_DB_PASSWORD=password
+      - KC_DB_SCHEMA=public
+
+      # --- Web Configuration ---
+      - KC_HTTP_ENABLED=true
+      - KC_HOSTNAME=localhost
+
+      # --- RabbitMQ Configuration ---
+      # "keycloak_event_listener" SPI.
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=user
+      - RABBITMQ_PASSWORD=password
+      - RABBITMQ_VIRTUAL_HOST=/
+    ports:
+      - "8080:8080"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
 
 volumes:
   mongodb_data:
