@@ -7,7 +7,7 @@
     "characterPresetId": {
         "type": "string",
         "description": "ID for the character pack (images, default voices).",
-        "enum": ["peter_stewie", "rick_morty", "spongebob_patrick"]
+        "enum": ["peter_stewie", "rick_morty", "spongebob_patrick", "homer_ned"]
     },
     "topicTitle": {
         "type": "string",
