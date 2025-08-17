@@ -5,22 +5,27 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
 /**
  * A builder for creating and executing complex FFmpeg video compositions.
  * This class allows for a step-by-step construction of an FFmpeg command.
  */
+@Component
+@Scope("prototype")
 @Slf4j
 public class VideoCompositionBuilder {
 
@@ -34,8 +39,10 @@ public class VideoCompositionBuilder {
     private Integer narrationInputIndex = null;
     private double outputDurationSeconds = -1.0; // To store the target output duration
 
-    private final int height;
-    private final int width;
+    private int height;
+    private int width;
+
+    private final Path FONTS_DIR_PATH;
 
     // Progress listener
     private ProgressListener progressListener;
@@ -43,8 +50,20 @@ public class VideoCompositionBuilder {
     // Pattern to extract time from FFmpeg progress output
     private static final Pattern FFMPEG_TIME_PATTERN = Pattern.compile("time=(\\d{2}:\\d{2}:\\d{2}\\.\\d{2})");
 
+    public VideoCompositionBuilder() throws IOException {
+        // Use the ClassLoader to get a URL for the fonts directory
+        URL resourceUrl = this.getClass().getClassLoader().getResource("fonts/");
+        if (resourceUrl == null) {
+            throw new IOException("Fonts directory not found in resources: fonts/");
+        }
 
-    public VideoCompositionBuilder(int width, int height) {
+        try {
+            // Convert the URL to a Path
+            this.FONTS_DIR_PATH = Paths.get(resourceUrl.toURI());
+        } catch (URISyntaxException e) {
+            throw new IOException("Invalid URI for fonts directory: " + resourceUrl, e);
+        }
+
         // Default output codecs
         this.outputOptions.add("-c:v");
         this.outputOptions.add("libx264");
@@ -53,14 +72,17 @@ public class VideoCompositionBuilder {
         this.outputOptions.add("-c:a");
         this.outputOptions.add("aac");
         this.outputOptions.add("-y"); // Overwrite output file
-
-        this.height = height;
-        this.width = width;
     }
 
     // Setter for the progress listener
     public VideoCompositionBuilder withProgressListener(ProgressListener listener) {
         this.progressListener = listener;
+        return this;
+    }
+
+    public VideoCompositionBuilder withDimensions(int width, int height) {
+        this.width = width;
+        this.height = height;
         return this;
     }
 
@@ -218,9 +240,8 @@ public class VideoCompositionBuilder {
         String newOutputTag = "[v_with_subs]"; // A new, final tag for the video stream
 
         // Create a new, separate filter for the subtitles
-        String subtitleFilter = String.format(Locale.US, "%sass=filename='%s'%s",
-                currentVideoTag, escapedPath, newOutputTag);
-
+        String subtitleFilter = String.format(Locale.US, "%sass=filename='%s':fontsdir='%s'%s",
+                currentVideoTag, escapedPath, FONTS_DIR_PATH.toString(), newOutputTag);
         // Add this filter as the NEW last step in the chain
         this.filterComplexParts.add(subtitleFilter);
         

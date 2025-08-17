@@ -19,4 +19,5 @@ public class Asset {
     private String description; // Nullable
     private String thumbnailUrl; // Nullable
     private String sourceUrl; // Nullable
+    private String displayName; // Nullable
 }

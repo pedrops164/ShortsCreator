@@ -40,14 +40,6 @@ public class AppProperties {
         private Elevenlabs elevenlabs = new Elevenlabs();
         private Speechify speechify = new Speechify();
     }
-
-    @Data
-    public static class SpeechifyVoiceMapping {
-        private String rick;
-        private String morty;
-        private String peter;
-        private String stewie; // Optional, can be null if not set
-    }
     
     @Data
     public static class Openai {
@@ -87,5 +79,15 @@ public class AppProperties {
         private String generationRequestPrefix; // e.g., "request.generate."
         @NotEmpty
         private String contentStatus; // e.g., "content.status"
+    }
+
+    @Valid
+    @NotNull
+    private Video video = new Video();
+
+    @Data
+    public static class Video {
+        private int width;
+        private int height;
     }
 }

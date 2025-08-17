@@ -17,3 +17,11 @@ export interface VideoAsset {
     thumbnailUrl: string;
     sourceUrl: string;
 }
+
+export interface FontAsset {
+    id: string;
+    assetId: string;
+    name: string;
+    sourceUrl: string;
+    displayName: string; // for better UI display
+}

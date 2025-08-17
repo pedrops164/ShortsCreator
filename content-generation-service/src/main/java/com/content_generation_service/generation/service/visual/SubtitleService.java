@@ -34,7 +34,7 @@ public class SubtitleService {
         // Build the .ass file content
         StringBuilder assContent = new StringBuilder();
         appendAssHeader(assContent, font, color, position);
-        appendAssEvents(assContent, wordTimings);
+        appendAssEvents(assContent, wordTimings, true);
 
         // Write content to a temporary file
         Path assPath;
@@ -67,11 +67,11 @@ public class SubtitleService {
         builder.append("[V4+ Styles]\n");
         builder.append("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n");
         // Define our custom style
-        builder.append(String.format("Style: Default,%s,18,%s,&H000000FF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,2,2,%d,10,10,40,1\n\n",
+        builder.append(String.format("Style: Default,%s,21,%s,&H000000FF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,6,2,%d,10,10,40,1\n\n",
             font, assColor, alignment));
     }
 
-    private void appendAssEvents(StringBuilder builder, List<WordTiming> wordTimings) {
+    private void appendAssEvents(StringBuilder builder, List<WordTiming> wordTimings, boolean capitalize) {
         builder.append("[Events]\n");
         builder.append("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n");
 
@@ -81,8 +81,17 @@ public class SubtitleService {
             String startTime = formatAssTimestamp(timing.getStartTimeSeconds());
             String endTime = formatAssTimestamp(timing.getEndTimeSeconds());
             String text = timing.getWord();
+            if (capitalize) {
+                text = text.toUpperCase();
+            }
 
-            builder.append(String.format("Dialogue: 0,%s,%s,Default,,0,0,0,,%s\n", startTime, endTime, text));
+            int fadeInMs = 50; // Example fade-in duration
+            int fadeOutMs = 50; // Example fade-out duration
+            
+            // Prepend the fade effect tag to the text
+            String effectTag = String.format("{\\fad(%d,%d)}", fadeInMs, fadeOutMs);
+            
+            builder.append(String.format("Dialogue: 0,%s,%s,Default,,0,0,0,,%s%s\n", startTime, endTime, effectTag, text));
         }
     }
 

@@ -4,5 +4,6 @@ public enum AssetType {
     VIDEO,
     MUSIC,
     VOICE,
-    CHARACTER_IMAGE
+    CHARACTER_IMAGE,
+    FONT
 }

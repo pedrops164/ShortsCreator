@@ -89,6 +89,12 @@
               "default": "bottom"
           }
         },
+        "required": [
+          "show",
+          "color",
+          "font",
+          "position"
+        ],
         "additionalProperties": false
     },
     "voiceSelection": {

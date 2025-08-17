@@ -17,9 +17,11 @@ import java.util.stream.Collectors;
 import java.util.UUID;
 import java.awt.Dimension;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.content_generation_service.config.AppProperties;
 import com.content_generation_service.generation.model.CharacterNarration;
 import com.content_generation_service.generation.model.DialogueLineInfo;
 import com.content_generation_service.generation.model.NarrationSegment;
@@ -48,6 +50,9 @@ public class CharacterExplainsOrchestrator {
     private final VideoStatusUpdateDispatcher videoStatusUpdateDispatcher;
     private final AudioService audioService;
     private final ImageUtilitiesService imageUtilitiesService;
+
+    private final ObjectProvider<VideoCompositionBuilder> videoCompositionBuilderProvider;
+    private final AppProperties appProperties;
 
     // Use a clear property for the shared temporary path
     @Value("${app.storage.shared-temp.base-path}")
@@ -99,8 +104,12 @@ public class CharacterExplainsOrchestrator {
             // Generate subtitles from the audio timings
             Path subtitleFile = subtitleService.createAssFile(narration.getWordTimings(), font, color, position);
 
+            // Get dimensions from AppProperties
+            int videoWidth = appProperties.getVideo().getWidth();
+            int videoHeight = appProperties.getVideo().getHeight();
             // Combine everything into a final video composition
-            VideoCompositionBuilder compositionBuilder = new VideoCompositionBuilder(1080, 1920)
+            VideoCompositionBuilder compositionBuilder = videoCompositionBuilderProvider.getObject()
+                .withDimensions(videoWidth, videoHeight)
                 .withBackground(backgroundVideo)
                 .withNarration(narration.getAudioFilePath())
                 .withOutputDuration(narration.getDurationSeconds())
@@ -112,7 +121,7 @@ public class CharacterExplainsOrchestrator {
                     .distinct()
                     .collect(Collectors.toList());
 
-            int margin = 0; // Margin from the bottom of the video
+            int horizontal_margin = 50; // Margin from the borders of the video
             for (DialogueLineInfo line : narration.getDialogueTimings()) {
                 String characterId = line.getCharacterId();
                 Path characterImage = characterImageMap.get(characterId);
@@ -125,8 +134,8 @@ public class CharacterExplainsOrchestrator {
                 boolean isLeft = (characterIndex == 0);
 
                 // Calculate coordinates using the builder's dimensions
-                int y = compositionBuilder.getHeight() - imgDimensions.height - margin;
-                int x = isLeft ? margin : compositionBuilder.getWidth() - imgDimensions.width - margin;
+                int y = compositionBuilder.getHeight() - imgDimensions.height;
+                int x = isLeft ? horizontal_margin : compositionBuilder.getWidth() - imgDimensions.width - horizontal_margin;
 
                 compositionBuilder.withImageOverlay(
                     characterImage, 

@@ -22,5 +22,6 @@ stripe:
     cancel-url: "http://localhost:3000/account"
     # Map internal package names to the real Stripe Price IDs
     price-map:
+        "topup_01_usd": ${STRIPE_TOPUP_01_PRICE_ID}
         "topup_05_usd": ${STRIPE_TOPUP_05_PRICE_ID}
         "topup_10_usd": ${STRIPE_TOPUP_10_PRICE_ID}

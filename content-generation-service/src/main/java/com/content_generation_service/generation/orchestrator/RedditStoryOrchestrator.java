@@ -9,6 +9,7 @@ import com.content_generation_service.generation.service.visual.SubtitleService;
 import com.content_generation_service.generation.service.visual.VideoAssetService;
 import com.content_generation_service.generation.service.visual.VideoCompositionBuilder;
 import com.content_generation_service.messaging.VideoStatusUpdateDispatcher;
+import com.content_generation_service.config.AppProperties;
 import com.content_generation_service.generation.model.NarrationSegment;
 import com.content_generation_service.generation.model.RedditNarration;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 
 import com.shortscreator.shared.dto.VideoUploadJobV1;
@@ -46,6 +48,9 @@ public class RedditStoryOrchestrator {
     private final RedditImageService redditImageService;
     private final VideoStatusUpdateDispatcher videoStatusUpdateDispatcher;
     private final AudioService audioService;
+
+    private final ObjectProvider<VideoCompositionBuilder> videoCompositionBuilderProvider;
+    private final AppProperties appProperties;
 
     // Use a clear property for the shared temporary path
     @Value("${app.storage.shared-temp.base-path}")
@@ -81,13 +86,18 @@ public class RedditStoryOrchestrator {
             // Generate subtitles from the audio timings
             JsonNode subtitles = params.get("subtitles");
             String font = subtitles.get("font").asText("Arial");
+            //String font = "Montserrat ExtraBold"; // test
             String color = subtitles.get("color").asText("#FFFFFF");
             String position = subtitles.get("position").asText("bottom");
             Path subtitleFile = subtitleService.createAssFile(narration.getWordTimings(), font, color, position);
 
+            // Get dimensions from AppProperties
+            int videoWidth = appProperties.getVideo().getWidth();
+            int videoHeight = appProperties.getVideo().getHeight();
             // Combine everything into a final video composition
-            VideoCompositionBuilder compositionBuilder = new VideoCompositionBuilder(1080, 1920);
+            VideoCompositionBuilder compositionBuilder = videoCompositionBuilderProvider.getObject();
             finalVideoPath = compositionBuilder
+                .withDimensions(videoWidth, videoHeight)
                 .withBackground(backgroundVideo) // Assuming 9:16 aspect ratio
                 .withNarration(narration.getAudioFilePath())
                 .withCenteredOverlay(titleImage, 0, narration.getTitleDurationSeconds(), false)
