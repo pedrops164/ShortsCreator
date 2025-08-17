@@ -323,10 +323,12 @@ export default function ContentLibrary() {
                                     </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleContinue(item)}>
-                                        <Eye className="h-4 w-4 mr-2" />
-                                        View Details
-                                    </DropdownMenuItem>
+                                    {item.status !== ContentStatus.FAILED && (
+                                        <DropdownMenuItem onClick={() => handleContinue(item)}>
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            View Details
+                                        </DropdownMenuItem>
+                                    )}
                                     <DropdownMenuItem
                                         onClick={() => handleDelete(item)}
                                         className="text-red-600 focus:text-red-600"
