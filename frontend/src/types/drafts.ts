@@ -18,4 +18,4 @@ export type CharacterExplainsDraft = ContentBase<CharacterExplainsParams>
 
 // The final union type
 // We add more content types as needed
-export type Draft = RedditStoryDraft | CharacterExplainsDraft | ContentBase<object>;
+export type Draft = RedditStoryDraft | CharacterExplainsDraft;

@@ -1,5 +1,6 @@
 'use client';
 
+import React, { Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -66,7 +67,16 @@ export default function LoginPage() {
             <h1 className="text-white text-3xl font-bold mb-2">Shorts Creator</h1>
             <p className="text-gray-300 mb-6">Sign in to continue</p>
         </div>
-        <GoogleSignInButton />
+        <Suspense fallback={
+          <button
+            disabled
+            className="bg-gray-300 text-gray-500 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-sm flex items-center gap-3"
+          >
+            Loading...
+          </button>
+        }>
+          <GoogleSignInButton />
+        </Suspense>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, ChangeEvent, useRef, useImperativeHandle, forwardRef, useEffect } from 'react';import { RedditStoryDraft, RedditStoryParams } from '@/types';
-import { Draft } from '@/types/drafts';
+import React, { useState, ChangeEvent, useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
+import { RedditStoryCreationPayload, RedditStoryDraft, RedditStoryParams } from '@/types';
 import { EditorHandle } from '@/types/editor';
 
 // --- UI Components & Icons ---
@@ -13,14 +13,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import {
-  Plus, Trash2, AlertCircle, MessageSquare, User, Hash,
+  Plus, Trash2, AlertCircle, MessageSquare, User, Hash, Film, Mic2, Paintbrush
 } from "lucide-react";
 import { VideoCustomization } from './customization/VideoCustomization';
 import { SubtitleOptions } from './customization/SubtitleOptions';
 import { calculateApproximatePrice } from '@/lib/pricingUtils';
+import { FormControl } from '../ui/FormControl';
+
+// Create a union type for the data the editor can receive
+type RedditStoryEditorData = RedditStoryDraft | RedditStoryCreationPayload;
 
 interface EditorProps {
-  initialData: RedditStoryDraft;
+  initialData: RedditStoryEditorData;
   onDirtyChange: (isDirty: boolean) => void;
   onPriceUpdate: (priceInCents: number) => void;
 }
@@ -42,13 +46,13 @@ const defaultParams: RedditStoryParams = {
     font: 'Arial',
     position: 'center',
   },
-  voiceSelection: '',
+  voiceSelection: 'openai_alloy',
   theme: 'dark',
 };
 
 // --- Validation Logic ---
-const validate = (params: RedditStoryParams): Record<string, any> => {
-  const errors: Record<string, any> = {};
+const validate = (params: RedditStoryParams): Record<string, string | Record<string, string>> => {
+  const errors: Record<string, string | Record<string, string>> = {};
   if (!params.username?.trim()) errors.username = 'Username is required.';
   else if (params.username.length < 3) errors.username = 'Username must be at least 3 characters.';
   if (!params.subreddit?.trim()) errors.subreddit = 'Subreddit is required.';
@@ -59,9 +63,9 @@ const validate = (params: RedditStoryParams): Record<string, any> => {
   if (!params.backgroundVideoId) errors.backgroundVideoId = 'Background video is required.';
   if (!params.voiceSelection) errors.voiceSelection = 'Narration voice is required.';
   if (params.subtitles?.show) {
-    if (!params.subtitles.font?.trim()) errors.subtitles = { ...errors.subtitles, font: 'Subtitle font is required.' };
+    if (!params.subtitles.font?.trim()) errors.subtitles = { ...errors.subtitles as object, font: 'Subtitle font is required.' };
     if (!/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(params.subtitles.color || '')) {
-        errors.subtitles = { ...errors.subtitles, color: 'Must be a valid hex color.' };
+        errors.subtitles = { ...errors.subtitles as object, color: 'Must be a valid hex color.' };
     }
   }
   return errors;
@@ -73,7 +77,7 @@ export const RedditStoryEditor = forwardRef<EditorHandle, EditorProps>(
     ...defaultParams,
     ...initialData.templateParams,
   });
-  const [errors, setErrors] = useState<Record<string, any>>({});
+  const [errors, setErrors] = useState<Record<string, string | Record<string, string>>>({});
 
   const [newComment, setNewComment] = useState({ author: '', text: '' });
   const commentsEndRef = useRef<HTMLDivElement>(null);
@@ -122,7 +126,7 @@ export const RedditStoryEditor = forwardRef<EditorHandle, EditorProps>(
     setParams(prev => ({ ...prev, [name]: value }));
   };
   
-  const handleSubtitleChange = (field: keyof NonNullable<RedditStoryParams['subtitles']>, value: any) => {
+  const handleSubtitleChange = (field: keyof NonNullable<RedditStoryParams['subtitles']>, value: unknown) => {
     setParams(p => ({ ...p, subtitles: { ...p.subtitles, [field]: value } }));
   };
 
@@ -149,8 +153,10 @@ export const RedditStoryEditor = forwardRef<EditorHandle, EditorProps>(
             <AlertDescription>
                 <div className="font-medium text-red-700 dark:text-red-400 mb-2">Please fix the following errors:</div>
                 <ul className="list-disc list-inside space-y-1 text-sm">
-                    {Object.values(errors).flat().map((error: any, index) => (
-                        <li key={index}>{typeof error === 'string' ? error : Object.values(error).join(', ')}</li>
+                    {Object.values(errors)
+                      .flatMap(e => (typeof e === 'object' ? Object.values(e) : e))
+                      .map((error, index) => (
+                        <li key={index}>{String(error)}</li>
                     ))}
                 </ul>
             </AlertDescription>
@@ -167,7 +173,7 @@ export const RedditStoryEditor = forwardRef<EditorHandle, EditorProps>(
             <CardContent className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="username">Author's Username *</Label>
+                  <Label htmlFor="username">Author&apos;s Username *</Label>
                   <div className="relative"><User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input id="username" name="username" placeholder="e.g., throwaway123" value={params.username} onChange={handleChange} className={`pl-10 ${errors.username ? "border-destructive" : ""}`}/>
                   </div>
@@ -237,23 +243,42 @@ export const RedditStoryEditor = forwardRef<EditorHandle, EditorProps>(
           </Card>
 
           <VideoCustomization>
-            <VideoCustomization.BackgroundVideo
-              value={params.backgroundVideoId}
-              onChange={(value) => handleSelectChange('backgroundVideoId', value)}
-              error={errors.backgroundVideoId}
-            />
+            <FormControl
+              label="Background Video"
+              required
+              icon={Film}
+              error={errors.backgroundVideoId as string | undefined}
+            >
+              <VideoCustomization.BackgroundVideo
+                value={params.backgroundVideoId}
+                onChange={(value) => handleSelectChange('backgroundVideoId', value)}
+              />
+            </FormControl>
             <Separator />
-            <VideoCustomization.Voice
-              value={params.voiceSelection}
-              onChange={(value) => handleSelectChange('voiceSelection', value)}
-              error={errors.voiceSelection}
-            />
+            
+            <FormControl
+              label="Narration Voice"
+              required
+              icon={Mic2}
+              error={errors.voiceSelection as string | undefined}
+            >
+              <VideoCustomization.Voice
+                value={params.voiceSelection}
+                onChange={(value) => handleSelectChange('voiceSelection', value)}
+              />
+            </FormControl>
             <Separator />
-            <VideoCustomization.Theme
-              value={params.theme}
-              onChange={(value) => handleSelectChange('theme', value)}
-              error={errors.theme}
-            />
+            <FormControl
+              label="Theme"
+              required
+              icon={Paintbrush}
+              error={errors.theme as string | undefined}
+            >
+              <VideoCustomization.Theme
+                value={params.theme}
+                onChange={(value) => handleSelectChange('theme', value)}
+              />
+            </FormControl>
           </VideoCustomization>
           
           <SubtitleOptions

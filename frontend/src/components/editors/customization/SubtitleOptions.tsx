@@ -23,7 +23,7 @@ export interface SubtitleSettings {
 // --- Prop Definition ---
 interface SubtitleOptionsProps {
   value: SubtitleSettings;
-  onChange: (field: keyof SubtitleSettings, value: any) => void;
+  onChange: (field: keyof SubtitleSettings, value: unknown) => void;
   hasErrors?: boolean; 
 }
 

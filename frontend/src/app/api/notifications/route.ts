@@ -17,10 +17,6 @@ export async function GET(req: NextRequest) {
         'Authorization': `Bearer ${token.accessToken}`,
         'Accept': 'text/event-stream',
       },
-      // Important: `duplex: 'half'` is required for streaming request bodies in some environments.
-      // Although we don't have a body, it's good practice for streaming.
-      // @ts-ignore
-      duplex: 'half',
     });
 
     if (!response.ok || !response.body) {

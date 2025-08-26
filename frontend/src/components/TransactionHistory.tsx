@@ -50,7 +50,7 @@ const formatDate = (dateString: string) => {
 
 // --- Sub-components ---
 
-const PaginationControls = ({ page, onPageChange }: { page: Page<any>, onPageChange: (newPage: number) => void }) => {
+const PaginationControls = ({ page, onPageChange }: { page: Page<unknown>, onPageChange: (newPage: number) => void }) => {
   if (page.totalPages <= 1) return null;
 
   return (

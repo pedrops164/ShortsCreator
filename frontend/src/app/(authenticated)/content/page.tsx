@@ -118,6 +118,7 @@ export default function ContentLibrary() {
   // --- Action Handlers ---
   const handleDownload = (item: Draft) => {
     //TODO: Implement download logic
+    console.log(`Downloading item: ${item.id}`);
   };
 
   const handleGetHelp = (item: Draft) => {
@@ -262,17 +263,9 @@ export default function ContentLibrary() {
                             <TableRow key={item.id} className="hover:bg-muted/50">
                             <TableCell>
                                 <div className="flex items-start space-x-4">
-                                {item.thumbnailUrl ? (
-                                    <img
-                                        src={item.thumbnailUrl}
-                                        alt={getDraftTitle(item)}
-                                        className="w-20 h-12 rounded-md object-cover bg-muted flex-shrink-0"
-                                    />
-                                ) : (
-                                    <div className="w-20 h-12 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
-                                        <FileVideo className="h-6 w-6 text-muted-foreground" />
-                                    </div>
-                                )}
+                                  <div className="w-20 h-12 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                                      <FileVideo className="h-6 w-6 text-muted-foreground" />
+                                  </div>
                                 <div className="min-w-0 flex-1">
                                     <p className="font-medium text-foreground" title={getDraftTitle(item)}>
                                         {getDraftTitle(item)}

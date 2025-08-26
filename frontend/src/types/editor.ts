@@ -3,5 +3,5 @@
 export interface EditorHandle {
   // Runs validation and returns the latest form data.
   // Returns null if validation fails.
-  getValidatedData: () => Record<string, any> | null;
+  getValidatedData: () => Record<string, unknown> | null;
 }

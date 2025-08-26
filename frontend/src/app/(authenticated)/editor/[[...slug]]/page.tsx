@@ -81,7 +81,7 @@ export default function EditorPage() {
   }, [slug, router]);
 
   // This function is passed down to the specific editor component
-  const handleSave = async (params: Record<string, any>): Promise<Draft | null> => {
+  const handleSave = async (params: Record<string, unknown>): Promise<Draft | null> => {
     setIsSaving(true);
     try {
       let savedDraft: Draft;
@@ -174,13 +174,44 @@ export default function EditorPage() {
   // Look up the component from the map using the template name
   const editorInfo = EDITOR_MAP[draftData.templateId as keyof typeof EDITOR_MAP];
   if (!editorInfo) {
-    return <div className="text-center p-12 text-red-500">Error: Unknown editor template "{draftData.templateId}".</div>;
+    return <div className="text-center p-12 text-red-500">Error: Unknown editor template &quot;{draftData.templateId}&quot;.</div>;
   }
-  const EditorComponent = editorInfo.component;
 
   // Determine if the form should be in a read-only state.
   const isReadOnly = 'status' in draftData && draftData.status === ContentStatus.COMPLETED;
 
+  // Helper function to render the correct editor based on the templateId
+  const renderEditor = () => {
+    switch (draftData.templateId) {
+      case 'reddit_story_v1':
+        // Inside this case, TypeScript KNOWS draftData is
+        // RedditStoryDraft | RedditStoryCreationPayload.
+        // This now perfectly matches the prop type of RedditStoryEditor.
+        return (
+          <RedditStoryEditor
+            ref={editorRef}
+            initialData={draftData}
+            onDirtyChange={setIsDirty}
+            onPriceUpdate={setApproximatePrice}
+          />
+        );
+      
+      case 'character_explains_v1':
+        // Similarly, TypeScript narrows the type for this case.
+        return (
+          <CharacterExplainsEditor
+            ref={editorRef}
+            initialData={draftData}
+            onDirtyChange={setIsDirty}
+            onPriceUpdate={setApproximatePrice}
+          />
+        );
+
+      default:
+        return <div className="text-red-500">Invalid editor type!</div>;
+    }
+  };
+  
   return (
     <div className="flex flex-col h-screen">
       <EditorHeader
@@ -194,12 +225,13 @@ export default function EditorPage() {
       
       <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
         <fieldset disabled={isReadOnly || isSaving} className="space-y-8">
-          <EditorComponent
+          {/* <EditorComponent
             ref={editorRef}
             initialData={draftData}
             onDirtyChange={setIsDirty}
             onPriceUpdate={setApproximatePrice} // Pass setter to editor
-          />
+          /> */}
+          {renderEditor()}
         </fieldset>
       </main>
 

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { CharacterExplainsDraft, CharacterExplainsParams } from '@/types'; // Assuming types are in @/types
+import { CharacterExplainsCreationPayload, CharacterExplainsDraft, CharacterExplainsParams } from '@/types'; // Assuming types are in @/types
 import {
-  Plus, Trash2, AlertCircle, Users, MessageSquare, Loader2
+  Plus, Trash2, AlertCircle, Users, MessageSquare, Loader2, Film
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,15 +20,19 @@ import { CharacterPreset } from '@/types';
 import apiClient from '@/lib/apiClient';
 import { EditorHandle } from '@/types/editor';
 import { calculateApproximatePrice } from '@/lib/pricingUtils';
+import { FormControl } from '../ui/FormControl';
 
 interface DialogueLine {
   characterId: string;
   text: string;
 }
 
+// Create a union type for the data the editor can receive
+type CharacterExplainsEditorData = CharacterExplainsDraft | CharacterExplainsCreationPayload;
+
 // --- Prop Definition ---
 interface EditorProps {
-  initialData: CharacterExplainsDraft;
+  initialData: CharacterExplainsEditorData;
   onDirtyChange: (isDirty: boolean) => void;
   onPriceUpdate: (priceInCents: number) => void;
 }
@@ -39,13 +43,14 @@ const defaultParams: CharacterExplainsParams = {
   topicTitle: '',
   dialogue: [],
   backgroundVideoId: 'minecraft1',
+  backgroundMusicId: 'none',
   aspectRatio: '9:16',
   subtitles: { show: true, color: '#FFFFFF', font: 'Arial', position: 'center' },
 };
 
 // --- Validation Logic ---
-const validate = (params: CharacterExplainsParams): Record<string, any> => {
-  const errors: Record<string, any> = {};
+const validate = (params: CharacterExplainsParams): Record<string, string> => {
+  const errors: Record<string, string> = {};
   if (!params.characterPresetId) errors.characterPresetId = 'A character preset must be selected.';
   if (!params.topicTitle?.trim() || params.topicTitle.length < 3) errors.topicTitle = 'Topic Title must be at least 3 characters.';
   if (params.dialogue?.length === 0) errors.dialogue = 'Dialogue script cannot be empty.';
@@ -64,7 +69,7 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
     subtitles: { ...defaultParams.subtitles, ...initialData.templateParams?.subtitles },
   });
 
-  const [errors, setErrors] = useState<Record<string, any>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   
   // Local state for the dialogue input form
   const [newDialogueText, setNewDialogueText] = useState('');
@@ -136,7 +141,7 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
     } else {
       setActiveSpeakerId('');
     }
-  }, [activePreset]);
+  }, [activePreset, activeSpeakerId]);
 
   // --- Handlers ---
   
@@ -144,6 +149,7 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
     setParams(p => ({ ...p, characterPresetId: preset.presetId, dialogue: [] })); // Reset dialogue on preset change
     if (errors.characterPresetId) {
         setErrors(currentErrors => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { characterPresetId, ...rest } = currentErrors;
             return rest;
         });
@@ -158,7 +164,8 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
 
     if (errors.dialogue) {
         setErrors(currentErrors => {
-            const { dialogue, ...rest } = currentErrors;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { dialogue: _dialogue, ...rest } = currentErrors;
             return rest;
         });
     }
@@ -183,17 +190,18 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
     }
   };
 
-  const handleFormChange = (field: keyof CharacterExplainsParams, value: any) => {
+  const handleFormChange = (field: keyof CharacterExplainsParams, value: unknown) => {
     setParams(p => ({ ...p, [field]: value }));
     if (errors[field]) {
       setErrors(currentErrors => {
-        const { [field]: removedError, ...rest } = currentErrors;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [field]: _removedError, ...rest } = currentErrors;
         return rest;
       });
     }
   };
 
-  const handleSubtitleChange = (field: keyof NonNullable<CharacterExplainsParams['subtitles']>, value: any) => {
+  const handleSubtitleChange = (field: keyof NonNullable<CharacterExplainsParams['subtitles']>, value: unknown) => {
     setParams(p => ({ ...p, subtitles: { ...p.subtitles, [field]: value } }));
   };
 
@@ -279,11 +287,17 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
             </Card>
 
             <VideoCustomization>
-              <VideoCustomization.BackgroundVideo
-                  value={params.backgroundVideoId}
-                  onChange={(value) => handleFormChange('backgroundVideoId', value)}
-                  error={errors.backgroundVideoId}
-              />
+              <FormControl
+                label="Background Video"
+                required
+                icon={Film}
+                error={errors.backgroundVideoId as string | undefined}
+              >
+                <VideoCustomization.BackgroundVideo
+                    value={params.backgroundVideoId}
+                    onChange={(value) => handleFormChange('backgroundVideoId', value)}
+                />
+              </FormControl>
             </VideoCustomization>
 
             <SubtitleOptions
