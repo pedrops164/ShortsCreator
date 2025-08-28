@@ -15,10 +15,14 @@ public class LocalFileStorageService implements StorageService {
 
     private final String baseUrl;
 
-    public LocalFileStorageService(
+    /* public LocalFileStorageService(
         @Value("${app.storage.local-permanent.base-url}") String baseUrl
     ) {
         this.baseUrl = baseUrl;
+    } */
+
+    public LocalFileStorageService() {
+        this.baseUrl = "http://localhost:8080/files/"; // Dummy base URL for local storage
     }
 
     @Override

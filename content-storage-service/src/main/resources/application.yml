@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: content-storage-service
+  data:
+    mongodb:
+      #host: localhost
+      #port: 27017
+      #database: content_db
+      #username: user
+      #password: password
+      uri: ${SPRING_DATA_MONGODB_URI}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING_RABBITMQ_PORT}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI}
+
+# Port for this service
+server:
+  port: ${SERVER_PORT}
+
+app:
+  rabbitmq:
+    exchange: "content_exchange"
+    queues:
+      generation-results: "q.generation.results"
+    routing-keys:
+      generation-result: "generation.result"
+      # CSS needs to know the prefix for sending requests
+      generation-request-prefix: "request.generate."
+  services:
+    payment-service:
+      # URL for the payment service, used by the CSS to manage user balances.
+      url: ${PAYMENT_SERVICE_URL}

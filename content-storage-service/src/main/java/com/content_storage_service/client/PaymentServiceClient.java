@@ -1,5 +1,6 @@
 package com.content_storage_service.client;
 
+import com.content_storage_service.config.AppProperties;
 import com.content_storage_service.exception.InsufficientFundsClientException;
 import com.content_storage_service.exception.PaymentServiceInternalErrorException;
 import com.shortscreator.shared.dto.ContentPriceV1;
@@ -19,8 +20,8 @@ public class PaymentServiceClient {
 
     private final WebClient webClient;
 
-    public PaymentServiceClient(WebClient paymentServiceWebClient) {
-        this.webClient = paymentServiceWebClient;
+    public PaymentServiceClient(WebClient.Builder webClientBuilder, AppProperties appProperties) {
+        this.webClient = webClientBuilder.baseUrl(appProperties.getServices().getPaymentService().getUrl()).build();
     }
 
     public Mono<Void> debitForGeneration(String userId, String contentId, ContentPriceV1 priceResponse, ContentType contentType) {
