@@ -1,0 +1,14 @@
+# Settings in this file are ONLY active when the 'prod' profile is used.
+
+# Disable detailed error messages for security
+server:
+  error:
+    include-message: never
+    include-binding-errors: never
+  
+app:
+  storage:
+    # Shared temporary filesystem, simulating AWS EFS.
+    # Both CGS and CSS must have access to this location.
+    shared-temp:
+      base-path: ${SHARED_TEMP_STORAGE_PATH}

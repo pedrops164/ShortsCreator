@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: content-generation-service
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING_RABBITMQ_PORT}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
+
+# Port for this service
+server:
+  port: ${SERVER_PORT}
+
+app:
+  rabbitmq:
+    exchange: "content_exchange"
+    payment-exchange: "payment_exchange"
+    queues:
+      # CGS only needs to know about the queue it listens to
+      generation-requests: "q.generation.requests"
+    routing-keys:
+      # Routing key for sending generation results
+      generation-result: "generation.result"
+      # CGS needs to know the prefix for receiving requests
+      generation-request-prefix: "request.generate."
+      # CGS needs to know the routing key for status updates
+      content-status: "content.status"
+  tts:
+    openai:
+      # Load the secret API key from an environment variable.
+      api-key: ${OPENAI_API_KEY}
+    elevenlabs:
+      # Load the secret API key from an environment variable.
+      api-key: ${ELEVENLABS_API_KEY}
+    speechify:
+      # Load the secret API key from an environment variable.
+      api-key: ${SPEECHIFY_API_KEY}
+      voice-mapping:
+        rick: ${SPEECHIFY_VOICEID_RICK}
+        morty: ${SPEECHIFY_VOICEID_MORTY}
+        peter: ${SPEECHIFY_VOICEID_PETER}
+        stewie: ${SPEECHIFY_VOICEID_STEWIE}
+        homer: ${SPEECHIFY_VOICEID_HOMER}
+        ned: ${SPEECHIFY_VOICEID_NED}
+    cloning:
+      # Directory where character audio samples are stored.
+      audio-dir-path: classpath:assets/audio
+  transcription:
+    # Selects the OpenAiTranscriptionProvider bean via @ConditionalOnProperty
+    provider: openai
+  video:
+    # Default video width and height
+    width: 1080
+    height: 1920
