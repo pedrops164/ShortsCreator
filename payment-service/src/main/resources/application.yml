@@ -1,0 +1,48 @@
+
+spring:
+  application:
+    name: payment-service
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING_RABBITMQ_PORT}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+      #ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+# Port for this service
+server:
+  port: ${SERVER_PORT}
+
+app:
+  rabbitmq:
+    payment-exchange: "payment_exchange"
+    keycloak-exchange: "keycloak_exchange"
+    routing-keys:
+      payment-status: "payment.status"
+      new-user: "user.new"
+    queues:
+      new-user: "q.user.new" # Queue for new user events
+
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+  success-url: ${STRIPE_SUCCESS_URL}
+  cancel-url: ${STRIPE_CANCEL_URL}
+  # Map internal package names to the real Stripe Price IDs
+  price-map:
+    "topup_01_usd": ${STRIPE_TOPUP_01_PRICE_ID}
+    "topup_05_usd": ${STRIPE_TOPUP_05_PRICE_ID}
+    "topup_10_usd": ${STRIPE_TOPUP_10_PRICE_ID}

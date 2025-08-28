@@ -40,8 +40,6 @@ build/
 
 # Environment files
 **/.env
-application.properties
-application.yml
 **/.env.dev
 **/.env.prod
 
@@ -49,3 +47,6 @@ application.yml
 *.png
 *.mp4
 *.mp3
+
+# keycloak
+keycloak-server/shorts-creator-realm.json

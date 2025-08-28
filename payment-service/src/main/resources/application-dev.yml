@@ -1,27 +1,7 @@
-
-spring:
-    datasource:
-        url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-        username: ${POSTGRES_USER}
-        password: ${POSTGRES_PASSWORD}
-        driver-class-name: org.postgresql.Driver
-    jpa:
-        open-in-view: false
-        hibernate:
-            ddl-auto: update
-            #ddl-auto: create-drop
-        show-sql: true
-        properties:
-            hibernate:
-                format_sql: true
-
-stripe:
-    secret-key: ${STRIPE_SECRET_KEY}
-    webhook-secret: ${STRIPE_WEBHOOK_SECRET}
-    success-url: "http://localhost:3000/account"
-    cancel-url: "http://localhost:3000/account"
-    # Map internal package names to the real Stripe Price IDs
-    price-map:
-        "topup_01_usd": ${STRIPE_TOPUP_01_PRICE_ID}
-        "topup_05_usd": ${STRIPE_TOPUP_05_PRICE_ID}
-        "topup_10_usd": ${STRIPE_TOPUP_10_PRICE_ID}
+# Settings in this file are ONLY active when the 'dev' profile is used.
+  
+# Enable detailed error messages in HTTP responses for easier debugging
+server:
+  error:
+    include-message: always
+    include-binding-errors: always

@@ -1,0 +1,20 @@
+server:
+  port: 8086
+
+spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: user
+    password: password
+
+app:
+  rabbitmq:
+    payment-exchange: "payment_exchange"
+    exchange: "content_exchange"
+    queues:
+      notifications: "q.content.status"
+      payments: "q.payment.status"
+    routing-keys:
+      content-status: "content.status"
+      payment-status: "payment.status"
