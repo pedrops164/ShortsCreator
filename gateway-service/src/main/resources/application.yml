@@ -1,0 +1,59 @@
+
+server:
+  port: ${SERVER_PORT}
+
+spring:
+  application:
+    name: api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # This will be replaced with the environment variable
+          issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI}
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            # Route to Content Storage Service (CSS)
+            - id: content-storage-service-private-route
+              # The URI points to the service name within the AWS VPC
+              uri: ${APP_CSS_URL}
+              predicates:
+                - Path=/api/v1/content/**, /api/v1/assets/**, /api/v1/presets/**
+              filters:
+                # Apply the User ID header filter only to authenticated paths
+                - name: AddUserIdHeader
+                  args:
+                    onlyOnPaths: /api/v1/content/**
+
+            # Route to Notification Service (NS)
+            - id: notification-service-route
+              uri: ${APP_NS_URL}
+              predicates:
+                - Path=/api/v1/notifications/**
+              filters:
+                - AddUserIdHeader
+
+            # Route to Payment Service (PS)
+            - id: payment-service-route
+              uri: ${APP_PS_URL}
+              predicates:
+                - Path=/api/v1/balance/**, /api/v1/payments/**, /api/v1/transactions/**, /api/v1/stripe/webhooks/**
+              filters:
+                # Apply the User ID header filter only to authenticated paths
+                - name: AddUserIdHeader
+                  args:
+                    onlyOnPaths: /api/v1/balance, /api/v1/payments/create-checkout-session, /api/v1/transactions
+          
+          # Global CORS configuration for production
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                # Use an environment variable for the frontend URL
+                allowed-origins: ${FRONTEND_URL}
+                allowed-methods: [GET, POST, PUT, DELETE]
+                allowed-headers: [Authorization, Content-Type, Stripe-Signature]
+                allow-credentials: true
