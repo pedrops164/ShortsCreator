@@ -1,0 +1,38 @@
+version: 0.2
+
+# These environment variables will be configured in the CodeBuild project settings
+# SERVICE_NAME: The name of the module to build (e.g., content-storage-service)
+# IMAGE_REPO_NAME: The name of the ECR repository (e.g., content-storage-service)
+# AWS_ACCOUNT_ID: The AWS Account ID.
+# AWS_DEFAULT_REGION: The AWS region (e.g., eu-west-1).
+
+phases:
+  install:
+    runtime-versions:
+      # Specify the Java version
+      java: corretto21
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      # Logs the Docker client into the ECR registry
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      # Use the Git commit hash as the image tag for traceability
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+  build:
+    commands:
+      - echo "Building the Docker image for $SERVICE_NAME..."
+      # Build the Docker image, using the Dockerfile located inside the service's directory
+      # The '.' at the end sets the build context to the project root, giving access to all modules
+      - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG -f $SERVICE_NAME/Dockerfile .
+  post_build:
+    commands:
+      - echo "Pushing the Docker image to ECR..."
+      # Push the image to the specified ECR repository
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+      # (Optional) Create an image detail file for the deployment stage
+      - printf '[{"name":"%s","imageUri":"%s"}]' $SERVICE_NAME $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG > imagedefinitions.json
+
+artifacts:
+  files:
+    # This artifact is used by the ECS Deploy action in CodePipeline
+    - imagedefinitions.json
