@@ -18,19 +18,22 @@ phases:
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
       # Use the Git commit hash as the image tag for traceability
       - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      # Define the full repository URI
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
   build:
     commands:
       - echo "Building the Docker image for $SERVICE_NAME..."
       # Build the Docker image, using the Dockerfile located inside the service's directory
       # The '.' at the end sets the build context to the project root, giving access to all modules
-      - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG -f $SERVICE_NAME/Dockerfile .
+      - docker build -t $REPOSITORY_URI:$IMAGE_TAG -f $SERVICE_NAME/Dockerfile .
   post_build:
     commands:
       - echo "Pushing the Docker image to ECR..."
       # Push the image to the specified ECR repository
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
       # (Optional) Create an image detail file for the deployment stage
-      - printf '[{"name":"%s","imageUri":"%s"}]' $SERVICE_NAME $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG > imagedefinitions.json
+      - echo "Creating imagedefinitions.json for deployment..."
+      - printf '[{"name":"%s","imageUri":"%s"}]' $SERVICE_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 
 artifacts:
   files:
