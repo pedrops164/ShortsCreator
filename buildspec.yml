@@ -13,6 +13,13 @@ phases:
       java: corretto21
   pre_build:
     commands:
+      # This command downloads the realm file from the secure S3 bucket
+      # and places it where the Keycloak Dockerfile expects to find it.
+      - |
+        if [ "$SERVICE_NAME" = "keycloak-server" ]; then
+          echo "Downloading Keycloak realm configuration..."
+          aws s3 cp s3://shorts-creator-prod-build-secrets/shorts-creator-realm.json keycloak-server/shorts-creator-realm.json
+        fi
       - echo "Logging in to Amazon ECR..."
       # Logs the Docker client into the ECR registry
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
