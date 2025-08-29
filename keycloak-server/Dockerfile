@@ -7,7 +7,7 @@ LABEL service="keycloak-auth-server"
 
 # Copy the pre-configured realm file into Keycloak's import directory.
 # Keycloak will automatically detect and import this file on its first startup.
-COPY ./shorts-creator-realm.json /opt/keycloak/data/import/realm.json
+COPY ./keycloak-server/shorts-creator-realm.json /opt/keycloak/data/import/realm.json
 
 # Expose Keycloak's default HTTP port
 EXPOSE 8080
