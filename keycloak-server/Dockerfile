@@ -20,4 +20,4 @@ EXPOSE 8443
 
 # Add the default command to start the server in development mode.
 # This command will be executed when the container starts.
-CMD ["start", "--import-realm"]
+CMD ["start", "--import-realm", "--health-enabled=true", "--http-enabled=true", "--proxy=edge"]
