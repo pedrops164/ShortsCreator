@@ -12,7 +12,7 @@ COPY ./keycloak-server/shorts-creator-realm.json /opt/keycloak/data/import/realm
 # Expose Keycloak's default HTTP port
 EXPOSE 8080
 
-## Expose the management port
+# Expose the management port
 EXPOSE 9000
 
 # Expose the HTTPS port (for future production use)

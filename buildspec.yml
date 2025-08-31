@@ -32,7 +32,8 @@ phases:
       - echo "Building the Docker image for $SERVICE_NAME..."
       # Build the Docker image, using the Dockerfile located inside the service's directory
       # The '.' at the end sets the build context to the project root, giving access to all modules
-      - docker build -t $REPOSITORY_URI:$IMAGE_TAG -f $SERVICE_NAME/Dockerfile .
+      # Build the image with both a unique tag and the 'latest' tag
+      - docker build -t $REPOSITORY_URI:$IMAGE_TAG -t $REPOSITORY_URI:latest -f $SERVICE_NAME/Dockerfile .
   post_build:
     commands:
       - echo "Pushing the Docker image to ECR..."
