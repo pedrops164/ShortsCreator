@@ -37,3 +37,12 @@ app:
     payment-service:
       # URL for the payment service, used by the CSS to manage user balances.
       url: ${PAYMENT_SERVICE_URL}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

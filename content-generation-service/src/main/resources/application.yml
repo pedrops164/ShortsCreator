@@ -52,3 +52,12 @@ app:
     # Default video width and height
     width: 1080
     height: 1920
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

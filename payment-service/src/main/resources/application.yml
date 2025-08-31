@@ -46,3 +46,12 @@ stripe:
     "topup_01_usd": ${STRIPE_TOPUP_01_PRICE_ID}
     "topup_05_usd": ${STRIPE_TOPUP_05_PRICE_ID}
     "topup_10_usd": ${STRIPE_TOPUP_10_PRICE_ID}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
