@@ -35,6 +35,7 @@ public class SecurityConfig {
                 .pathMatchers("/api/v1/stripe/webhooks").permitAll()
                 .pathMatchers("/api/v1/assets/**").permitAll()
                 .pathMatchers("/api/v1/presets/**").permitAll()
+                .pathMatchers("/actuator/health").permitAll()
                 // All other requests must be authenticated
                 .anyExchange().authenticated()
             )
