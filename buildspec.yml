@@ -38,6 +38,7 @@ phases:
       - echo "Pushing the Docker image to ECR..."
       # Push the image to the specified ECR repository
       - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - docker push $REPOSITORY_URI:latest
       # (Optional) Create an image detail file for the deployment stage
       - echo "Creating imagedefinitions.json for deployment..."
       - printf '[{"name":"%s","imageUri":"%s"}]' $SERVICE_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
