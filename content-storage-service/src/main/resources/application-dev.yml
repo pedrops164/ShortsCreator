@@ -5,3 +5,9 @@ server:
   error:
     include-message: always
     include-binding-errors: always
+
+spring:
+  data:
+    mongodb:
+      database: ${MONGODB_DATABASE}
+      authentication-database: admin
