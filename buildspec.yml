@@ -48,3 +48,7 @@ artifacts:
   files:
     # This artifact is used by the ECS Deploy action in CodePipeline
     - imagedefinitions.json
+cache:
+  paths:
+    # This is the standard location for Maven dependencies
+    - '/root/.m2/**/*'
