@@ -5,3 +5,8 @@ server:
   error:
     include-message: never
     include-binding-errors: never
+
+spring:
+  data:
+    mongodb:
+      uri: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/?tls=true&tlsCAFile=global-bundle.pem&retryWrites=false

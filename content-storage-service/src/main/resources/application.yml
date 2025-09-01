@@ -3,12 +3,7 @@ spring:
     name: content-storage-service
   data:
     mongodb:
-      #host: localhost
-      #port: 27017
-      #database: content_db
-      #username: user
-      #password: password
-      uri: ${SPRING_DATA_MONGODB_URI}
+      uri: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/${MONGODB_DATABASE}?authSource=admin
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST}
     port: ${SPRING_RABBITMQ_PORT}
