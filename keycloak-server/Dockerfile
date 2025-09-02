@@ -18,14 +18,13 @@ RUN /opt/keycloak/bin/kc.sh build
 # This is the final, lean image that will run in production.
 FROM quay.io/keycloak/keycloak:26.2
 
-# Copy the optimized server files and the realm import file from the builder stage.
-COPY --from=builder /opt/keycloak/lib /opt/keycloak/lib
-COPY --from=builder /opt/keycloak/providers /opt/keycloak/providers
-COPY --from=builder /opt/keycloak/quarkus-run.jar /opt/keycloak/quarkus-run.jar
+# Copy the entire optimized server installation from the builder stage.
+COPY --from=builder /opt/keycloak/ /opt/keycloak/
+# Copy the realm import file into the appropriate directory.
 COPY ./keycloak-server/shorts-creator-realm.json /opt/keycloak/data/import/realm.json
 
 # Set the default entrypoint.
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start"]
 
-# Expose the default HTTP port. Your ALB will connect to this port.
+# Expose the default HTTP port. The ALB will connect to this port.
 EXPOSE 8080
