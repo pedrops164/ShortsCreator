@@ -5,3 +5,16 @@ server:
   error:
     include-message: never
     include-binding-errors: never
+
+spring:
+  data:
+    mongodb:
+      ssl:
+        enabled: true
+        bundle: awscert
+  ssl:
+    bundle:
+      pem:
+        awscert:
+          truststore:
+            certificate: classpath:global-bundle.pem

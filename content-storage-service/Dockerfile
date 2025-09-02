@@ -42,23 +42,6 @@ RUN --mount=type=cache,target=/root/.m2 mvn clean package -pl content-storage-se
 # Use a minimal, secure JRE image for the final stage
 FROM eclipse-temurin:21-jre-jammy
 
-# Certificate setup for AWS DocumentDB
-# The JRE image is minimal, so install curl first.
-# Run as root to install packages and modify the Java truststore.
-RUN apt-get update && apt-get install -y curl && \
-    # Download the AWS RDS CA certificate for DocumentDB
-    curl -o /tmp/global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem && \
-    # Import the certificate into the default Java truststore
-    keytool -importcert \
-        -alias "AWSRDS-DOCDB-ROOT-CA" \
-        -file /tmp/global-bundle.pem \
-        -keystore $JAVA_HOME/lib/security/cacerts \
-        -storepass changeit \
-        -noprompt && \
-    # Clean up the downloaded certificate file and apt cache
-    rm /tmp/global-bundle.pem && \
-    rm -rf /var/lib/apt/lists/*
-
 # Create a non-root user and group for better security
 RUN groupadd --system appuser && useradd --system --gid appuser appuser
 
@@ -79,4 +62,4 @@ USER appuser
 EXPOSE 8083
 
 # Define the command to run the application when the container starts
-ENTRYPOINT ["java", "-Djavax.net.ssl.trustStore=/opt/java/openjdk/lib/security/cacerts", "-Djavax.net.ssl.trustStorePassword=changeit", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
