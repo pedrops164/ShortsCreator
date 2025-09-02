@@ -1,0 +1,7 @@
+# Settings for the 'prod' profile.
+
+# Disable detailed error messages for security
+server:
+  error:
+    include-message: never
+    include-binding-errors: never
