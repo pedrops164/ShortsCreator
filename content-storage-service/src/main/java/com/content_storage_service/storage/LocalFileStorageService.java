@@ -10,7 +10,6 @@ import java.nio.file.Path;
 
 @Slf4j
 @Service
-@Profile("dev") // This bean is only active when the 'dev' profile is used
 public class LocalFileStorageService implements StorageService {
 
     private final String baseUrl;

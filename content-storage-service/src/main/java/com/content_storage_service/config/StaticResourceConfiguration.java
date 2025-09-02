@@ -7,7 +7,6 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-@Profile("dev")
 public class StaticResourceConfiguration implements WebMvcConfigurer {
 
     @Value("${app.storage.local.location}")
