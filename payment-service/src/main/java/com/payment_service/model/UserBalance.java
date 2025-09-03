@@ -35,6 +35,6 @@ public class UserBalance {
     public UserBalance(String userId) {
         this.userId = userId;
         this.currency = "USD"; // Default currency is USD
-        this.balanceInCents = 0L;
+        this.balanceInCents = 100L; // Initial balance set to 100 USD
     }
 }
