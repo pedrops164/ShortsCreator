@@ -7,8 +7,6 @@ FROM quay.io/keycloak/keycloak:26.2 AS builder
 ENV KC_DB=postgres
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
-# Setting proxy tells Keycloak to prepare for running behind a reverse proxy.
-ENV KC_PROXY=edge
 
 # Run the build command to create an optimized server image.
 # This is slow, but it only runs once when the Docker image is built.
