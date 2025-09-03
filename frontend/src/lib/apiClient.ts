@@ -1,4 +1,5 @@
 import axios, { isAxiosError } from 'axios';
+import { getSession } from 'next-auth/react';
 
 // Define a custom error class
 export class ApiError extends Error {
@@ -27,6 +28,17 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+  
+// --- REQUEST interceptor to attach the JWT ---
+apiClient.interceptors.request.use(async (config) => {
+  const session = await getSession();
+  if (session?.accessToken) {
+    config.headers.Authorization = `Bearer ${session.accessToken}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 // --- Add an error interceptor ---
