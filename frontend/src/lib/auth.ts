@@ -92,7 +92,14 @@ export const authOptions: AuthOptions = {
       return refreshedToken;
     },
     async session({ session, token }: { session: Session; token: JWT; }): Promise<Session> {
+      session.accessToken = token.accessToken;
       session.error = token.error; // Pass potential error to the client
+  
+      // Check if the user object and token.sub exist before assigning
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
+      }
+    
       return session;
     },
   },

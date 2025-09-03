@@ -8,7 +8,8 @@ declare module "next-auth" {
   interface Session {
     accessToken?: string;
     user: {
-      // You can add other properties here if needed
+      // We can add other properties here if needed
+      id: string;
     } & DefaultSession["user"]
     error?: string; // Pass errors to the client
   }
@@ -23,6 +24,8 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   /** Returned by the `jwt` callback and `getToken`, when using JWT sessions */
   interface JWT {
+    /** The user's unique identifier */
+    sub?: string; // Add the 'sub' property here
     /** OpenID ID Token */
     accessToken?: string
     refreshToken: string;

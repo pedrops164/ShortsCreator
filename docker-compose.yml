@@ -65,10 +65,12 @@ services:
 
       # --- Web Configuration ---
       - KC_HTTP_ENABLED=true
-      - KC_HOSTNAME=localhost
+      - KC_HOSTNAME=http://localhost:8080/auth
+      - KC_HTTP_RELATIVE_PATH=/auth
 
       # --- Health Check Configuration ---
       - KC_HEALTH_ENABLED=true
+      - KC_METRICS_ENABLED=true
 
       # --- RabbitMQ Configuration ---
       # "keycloak_event_listener" SPI.
@@ -77,6 +79,8 @@ services:
       - RABBITMQ_USERNAME=user
       - RABBITMQ_PASSWORD=password
       - RABBITMQ_VIRTUAL_HOST=/
+
+      - KC_LOG_LEVEL=debug,org.keycloak.broker:DEBUG
     ports:
       - "8080:8080"
       - "9000:9000"

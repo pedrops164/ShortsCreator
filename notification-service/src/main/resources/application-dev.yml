@@ -1,5 +1,5 @@
 # Settings in this file are ONLY active when the 'dev' profile is used.
-  
+
 # Enable detailed error messages in HTTP responses for easier debugging
 server:
   error:

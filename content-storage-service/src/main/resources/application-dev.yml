@@ -11,3 +11,6 @@ spring:
     mongodb:
       database: ${MONGODB_DATABASE}
       authentication-database: admin
+  rabbitmq:
+    ssl:
+      enabled: false
