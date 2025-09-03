@@ -14,11 +14,6 @@ spring:
     password: ${SPRING_RABBITMQ_PASSWORD}
     ssl:
       enabled: true
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI}
 
 # Port for this service
 server:

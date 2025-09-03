@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
-const sseUrl = 'http://localhost:8081/api/v1/notifications'; // Your Java SSE endpoint
+const sseUrl = process.env.NEXT_PUBLIC_API_URL + '/notifications'; // Java SSE endpoint
 
 export async function GET(req: NextRequest) {
   const token = await getToken({ req });

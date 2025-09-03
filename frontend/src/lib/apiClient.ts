@@ -23,7 +23,7 @@ export class ApiError extends Error {
 
 const apiClient = axios.create({
   // The baseURL points to the Next.js server's API routes.
-  baseURL: '/api/v1', 
+  baseURL: process.env.NEXT_PUBLIC_API_URL, 
   headers: {
     'Content-Type': 'application/json',
   },

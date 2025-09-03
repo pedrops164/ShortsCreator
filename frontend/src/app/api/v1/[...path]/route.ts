@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
-const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api/v1';
+const backendUrl = process.env.NEXT_PUBLIC_API_URL;
 
 // A handler function to avoid repeating code
 async function proxyHandler(req: NextRequest) {
