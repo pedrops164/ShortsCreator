@@ -29,18 +29,14 @@ public class ContentController {
     @PostMapping("/drafts")
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<Content> createContentDraft(@RequestBody ContentCreationRequest request, @RequestHeader("X-User-ID") String userId) {
-        return contentService.createDraft(userId, request.getTemplateId(), request.getTemplateParams())
-                .onErrorResume(e -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage())));
+        return contentService.createDraft(userId, request.getTemplateId(), request.getTemplateParams());
     }
 
     // Endpoint for a user to update existing content
     @PutMapping("/{contentId}")
     @ResponseStatus(HttpStatus.OK)
     public Mono<Content> updateContentDraft(@PathVariable String contentId, @RequestBody JsonNode updatedTemplateParams, @RequestHeader("X-User-ID") String userId) {
-        return contentService.updateDraft(contentId, userId, updatedTemplateParams)
-                .onErrorResume(IllegalStateException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage())))
-                .onErrorResume(IllegalArgumentException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage())))
-                .onErrorResume(e -> Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage())));
+        return contentService.updateDraft(contentId, userId, updatedTemplateParams);
     }
 
     // Endpoint to get all content for the authenticated user
@@ -57,8 +53,7 @@ public class ContentController {
     @ResponseStatus(HttpStatus.OK)
     public Mono<Content> getContentById(@PathVariable String contentId, @RequestHeader("X-User-ID") String userId) {
         return contentService.getContentByIdAndUserId(contentId, userId)
-                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Content not found.")))
-                .onErrorResume(e -> Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error retrieving content.", e)));
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Content not found.")));
     }
 
     // Endpoint for a user to submit a draft for generation
@@ -88,8 +83,6 @@ public class ContentController {
     public Mono<ContentPriceV1> getDraftPrice(
             @PathVariable String contentId,
             @RequestHeader("X-User-ID") String userId) {
-        return contentService.calculateDraftPrice(contentId, userId)
-                .onErrorResume(IllegalStateException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage())))
-                .onErrorResume(IllegalArgumentException.class, e -> Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage())));
+        return contentService.calculateDraftPrice(contentId, userId);
     }
 }

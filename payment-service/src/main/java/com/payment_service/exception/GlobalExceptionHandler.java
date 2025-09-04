@@ -3,6 +3,8 @@ package com.payment_service.exception;
 import com.shortscreator.shared.dto.ErrorResponse; // Import from your shared library
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -60,5 +62,28 @@ public class GlobalExceptionHandler {
         );
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+    
+    /**
+     * This is the "catch-all" handler.
+     * It catches any exception not handled by the more specific handlers above.
+     * This prevents stack traces from being leaked to the user and ensures every
+     * single unexpected error is logged properly.
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, HttpServletRequest request) {
+        String path = request.getRequestURI();
+        // Always log unexpected exceptions as ERROR and include the full stack trace
+        log.error("Unhandled Internal Server Error ({} {}): {}", request.getMethod(), path, ex.getMessage(), ex);
+
+        ErrorResponse errorResponse = new ErrorResponse(
+            Instant.now(),
+            HttpStatus.INTERNAL_SERVER_ERROR.value(), // 500
+            "INTERNAL_SERVER_ERROR",
+            "An unexpected internal error occurred. Please try again later.", // Hide internal details
+            path
+        );
+        
+        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

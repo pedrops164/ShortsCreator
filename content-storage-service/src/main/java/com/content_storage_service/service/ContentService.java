@@ -107,7 +107,10 @@ public class ContentService {
                         return Mono.error(new IllegalArgumentException("Updated draft parameters are invalid: " + e.getMessage()));
                     }
                 })
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("Content not found or unauthorized for ID: " + contentId)));
+                .switchIfEmpty(Mono.defer(() -> {
+                    log.warn("Update failed: Content [{}] not found or does not belong to user [{}]", contentId, userId);
+                    return Mono.error(new IllegalArgumentException("Content not found or unauthorized for ID: " + contentId));
+                }));
     }
 
     /**
