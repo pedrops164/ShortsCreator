@@ -259,7 +259,7 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
                                     {preset.characters.map(char => (
                                         <Image
                                             key={char.characterId}
-                                            src={char.avatarUrl}
+                                            src={(process.env.NEXT_PUBLIC_ASSET_CDN_URL || '') + char.avatarUrl}
                                             alt={char.name}
                                             width={48}
                                             height={48}
@@ -331,7 +331,7 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
                       const character = getCharacterById(line.characterId);
                       return (
                         <div key={index} className="flex items-start space-x-3 group">
-                          <Image src={character?.avatarUrl || ''} alt={character?.name || ''} width={32} height={32} className="w-8 h-8 rounded-full flex-shrink-0 mt-1" />
+                          <Image src={(process.env.NEXT_PUBLIC_ASSET_CDN_URL || '') + character?.avatarUrl || ''} alt={character?.name || ''} width={32} height={32} className="w-8 h-8 rounded-full flex-shrink-0 mt-1" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-bold" >{character?.name}</span>
@@ -360,7 +360,7 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
                              {activePreset.characters.map(char => (
                                <SelectItem key={char.characterId} value={char.characterId}>
                                  <div className="flex items-center space-x-2">
-                                   <Image src={char.avatarUrl} alt={char.name} width={20} height={20} className="w-5 h-5 rounded-full" />
+                                   <Image src={(process.env.NEXT_PUBLIC_ASSET_CDN_URL || '') + char.avatarUrl} alt={char.name} width={20} height={20} className="w-5 h-5 rounded-full" />
                                    <span>{char.name}</span>
                                  </div>
                                </SelectItem>

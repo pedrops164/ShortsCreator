@@ -75,7 +75,7 @@ const BackgroundVideo = ({ value, onChange }: SelectorProps) => {
             
             <div className="relative w-full h-20 aspect-video rounded-md overflow-hidden bg-muted">
                 <Image 
-                    src={bg.thumbnailUrl} 
+                    src={(process.env.NEXT_PUBLIC_ASSET_CDN_URL || '') + bg.thumbnailUrl} 
                     alt={bg.name} 
                     fill={true} 
                     className="object-cover" 

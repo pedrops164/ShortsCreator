@@ -30,7 +30,7 @@ const GoogleSignInButton = () => {
         <>
           {/* Invisible placeholder to maintain the button's original size */}
           <span className="invisible flex items-center gap-3">
-            <Image src="/google-logo.svg" alt="" width={20} height={20} />
+            <Image src="/google-logo.png" alt="" width={20} height={20} />
             Sign in with Google
           </span>
 

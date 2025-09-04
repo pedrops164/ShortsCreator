@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const isProduction = process.env.NODE_ENV === 'production';
+//const isProduction = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
@@ -19,9 +19,6 @@ const nextConfig: NextConfig = {
         hostname: 'd3hucckltpi95a.cloudfront.net',
       },
     ],
-    // Only use the custom loader in production
-    loader: isProduction ? 'custom' : 'default',
-    loaderFile: isProduction ? './src/lib/image-loader.js' : undefined,
   },
 };
 
