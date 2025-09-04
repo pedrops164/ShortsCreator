@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useBalance } from "@/context/BalanceContext"
 import { formatPriceFromCents } from "@/lib/pricingUtils"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { usePathname } from "next/navigation" 
 import { Skeleton } from "@/components/ui/skeleton"
@@ -14,18 +13,14 @@ import {
   HelpCircle,
   ChevronLeft,
   ChevronRight,
-  Zap,
   PlusSquare,
   LayoutGrid,
   Wallet,
   LogOut,
   LogIn,
   SunMoon,
-  Moon,
-  Sun,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { ThemeToggleButton } from "./ThemeToggleButton"
 import { signOut, useSession } from "next-auth/react"
 import Link from "next/link"
 import Image from "next/image"
@@ -53,14 +48,6 @@ const navigationItems = [
   },
 ]
 
-const bottomItems = [
-  {
-    title: "Help & Support",
-    icon: HelpCircle,
-    href: "/help",
-  },
-]
-
 export function Sidebar() {
   const { status } = useSession(); // Get auth status
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -72,10 +59,6 @@ export function Sidebar() {
   const { setTheme, resolvedTheme } = useTheme()
   const toggleTheme = () => setTheme(resolvedTheme === "dark" ? "light" : "dark")
   
-  // Prevent hydration errors with a mounting check
-  const [mounted, setMounted] = React.useState(false)
-  React.useEffect(() => setMounted(true), [])
-
   return (
     <div
       className={cn(
@@ -238,50 +221,6 @@ export function Sidebar() {
           </Button>
         </div>
       </div>
-    </div>
-  )
-}
-
-function BalanceDisplay({ isCollapsed }: { isCollapsed: boolean }) {
-  const { balanceInCents, isLoading } = useBalance();
-
-  if (isCollapsed) {
-    return (
-      <TooltipProvider delayDuration={0}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" className="w-full justify-center h-10 px-2" asChild>
-              <a href="/account">
-                <Wallet className="h-5 w-5" />
-              </a>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="flex items-center gap-2">
-            Balance: 
-            <span className="font-semibold">
-              {isLoading ? "..." : formatPriceFromCents(balanceInCents ?? 0)}
-            </span>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
-  }
-
-  return (
-    <div className="flex h-10 items-center justify-between px-2">
-      <div className="flex items-baseline justify-items-center space-x-2">
-        <span className="font-medium text-primary">Balance:</span>
-        {isLoading ? (
-          <Skeleton className="h-5 w-16" />
-        ) : (
-          <span className="font-bold text-primary">
-            {formatPriceFromCents(balanceInCents ?? 0)}
-          </span>
-        )}
-      </div>
-      <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-        <a href="/account"><PlusSquare className="h-4 w-4" /></a>
-      </Button>
     </div>
   )
 }
