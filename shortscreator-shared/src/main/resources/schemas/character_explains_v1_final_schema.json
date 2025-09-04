@@ -41,6 +41,12 @@
         "description": "ID of the selected background video.",
         "enum": ["minecraft1", "subway_surfers1"]
     },
+    "backgroundMusicId": {
+      "type": "string",
+      "description": "ID of the selected background music (optional).",
+      "enum": ["none"],
+      "default": "none"
+    },
     "characterLayout": {
         "type": "string",
         "description": "On-screen positioning of character images.",

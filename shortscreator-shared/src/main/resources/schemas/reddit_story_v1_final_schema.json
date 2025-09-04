@@ -12,7 +12,7 @@
     "backgroundMusicId": {
       "type": "string",
       "description": "ID of the selected background music (optional).",
-      "enum": ["none", "fun_1", "mysterious_1"],
+      "enum": ["none"],
       "default": "none"
     },
     "avatarImageUrl": {
