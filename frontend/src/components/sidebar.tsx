@@ -20,11 +20,17 @@ import {
   Wallet,
   LogOut,
   LogIn,
+  SunMoon,
+  Moon,
+  Sun,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggleButton } from "./ThemeToggleButton"
 import { signOut, useSession } from "next-auth/react"
 import Link from "next/link"
+import Image from "next/image"
+import { useTheme } from "next-themes"
+import React from "react"
 
 const navigationItems = [
   {
@@ -37,7 +43,7 @@ const navigationItems = [
     title: "Content Library",
     icon: LayoutGrid,
     href: "/content",
-    badge: "12",
+    badge: null,
   },
   {
     title: "Account & Billing",
@@ -57,30 +63,39 @@ const bottomItems = [
 
 export function Sidebar() {
   const { status } = useSession(); // Get auth status
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  // 👇 Get the current path
-  const pathname = usePathname()
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  // Get the current path
+  const pathname = usePathname();
+  const { balanceInCents, isLoading } = useBalance();
+  
+  // ✨ Get theme context and logic directly in the Sidebar
+  const { setTheme, resolvedTheme } = useTheme()
+  const toggleTheme = () => setTheme(resolvedTheme === "dark" ? "light" : "dark")
+  
+  // Prevent hydration errors with a mounting check
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => setMounted(true), [])
 
   return (
     <div
       className={cn(
-        "relative flex flex-col border-r bg-card transition-all duration-300",
-        isCollapsed ? "w-16" : "w-64",
+        "relative flex h-screen flex-col border-r bg-card transition-all duration-300", // Added h-screen for full height
+        isCollapsed ? "w-20" : "w-64", // Adjusted collapsed width for better centering
       )}
     >
       {/* Header */}
-      <div className="flex h-16 items-center justify-between px-4 border-b">
-        {!isCollapsed && (
-          <div className="flex items-center space-x-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-primary">
-              <Zap className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-lg font-semibold text-primary">CreatorApp</span>
-          </div>
-        )}
-        <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)} className="h-8 w-8">
-          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </Button>
+      <div className={cn("flex h-16 items-center border-b", isCollapsed ? "justify-center" : "px-4")}>
+        <Link href="/create" className="flex items-center gap-3">
+          <Image src="/logo.png" width={32} height={32} alt="Mad Shorts Logo" className="rounded-md" />
+          <span
+            className={cn(
+              "text-lg font-bold text-primary whitespace-nowrap transition-opacity duration-300",
+              isCollapsed && "sr-only", // Use sr-only for accessibility
+            )}
+          >
+            Mad Shorts
+          </span>
+        </Link>
       </div>
 
       {/* Navigation */}
@@ -90,119 +105,140 @@ export function Sidebar() {
             const Icon = item.icon
             const isActive = pathname === item.href
             return (
-              <Button
-                key={item.title}
-                variant={isActive ? "secondary" : "ghost"}
-                className={cn(
-                  "w-full justify-start h-10",
-                  isCollapsed && "px-2",
-                  isActive && "bg-yellow-100 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-400",
-                )}
-                asChild
-              >
-                <a href={item.href}>
-                  <Icon className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
-                  {!isCollapsed && (
-                    <>
-                      <span className="flex-1 text-left">{item.title}</span>
-                      {item.badge && (
-                        <Badge variant="secondary" className="ml-auto">
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </>
-                  )}
-                </a>
-              </Button>
-            )
-          })}
-        </nav>
-      </div>
-
-      <div className="mt-auto space-y-2 p-2"></div>
-        {/* Only render the balance section if the user is authenticated */}
-        {status === 'authenticated' && (
-          <>
-            <Separator />
-            <div className="p-1">
-              <BalanceDisplay isCollapsed={isCollapsed} />
-            </div>
-          </>
-        )}
-
-        <Separator />
-
-        {/* Theme Toggle */}
-        <div className="p-1.5">
-          <div className={cn("flex items-center", isCollapsed ? "justify-center" : "justify-between px-2")}>
-            {!isCollapsed && <span className="text-sm font-medium text-primary">Theme</span>}
-            <ThemeToggleButton />
-          </div>
-        </div>
-
-
-        <Separator />
-
-        {/* Bottom Navigation */}
-        <nav className="space-y-1">
-          {bottomItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <Button
-                key={item.title}
-                variant="ghost"
-                className={cn("w-full justify-start h-10", isCollapsed && "px-2")}
-                asChild
-              >
-                <a href={item.href}>
-                  <Icon className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
-                  {!isCollapsed && <span>{item.title}</span>}
-                </a>
-              </Button>
-            )
-          })}
-        </nav>
-
-        {status !== 'loading' && (
-          <>
-            <Separator />
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
+            <TooltipProvider key={item.title} delayDuration={0}>
+                <Tooltip>
                 <TooltipTrigger asChild>
-                  {status === 'authenticated' ? (
-                    // --- LOGOUT BUTTON ---
                     <Button
-                      variant="ghost"
-                      className={cn("w-full justify-start h-10", isCollapsed && "px-2 justify-center")}
-                      onClick={() => signOut({ callbackUrl: '/login' })}
+                    variant={isActive ? "secondary" : "ghost"}
+                    className={cn(
+                        "w-full justify-start h-10",
+                        // ✨ FIX: Removed px-2 from the collapsed state to allow perfect centering
+                        isCollapsed && "justify-center",
+                        isActive && "bg-yellow-100 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-400",
+                    )}
+                    asChild
                     >
-                      <LogOut className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
-                      {!isCollapsed && <span>Logout</span>}
+                    <Link href={item.href}>
+                        <Icon className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
+                        <span className={cn(isCollapsed && "sr-only")}>{item.title}</span>
+                    </Link>
                     </Button>
-                  ) : (
-                    // --- LOGIN BUTTON ---
-                    <Button
-                      variant="ghost"
-                      className={cn("w-full justify-start h-10", isCollapsed && "px-2 justify-center")}
-                      asChild
-                    >
-                      <Link href="/login">
-                        <LogIn className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
-                        {!isCollapsed && <span>Login</span>}
-                      </Link>
-                    </Button>
-                  )}
                 </TooltipTrigger>
-                {isCollapsed && (
-                  <TooltipContent side="right">
-                    {status === 'authenticated' ? 'Logout' : 'Login'}
-                  </TooltipContent>
-                )}
-              </Tooltip>
+                <TooltipContent side="right">{item.title}</TooltipContent>
+                </Tooltip>
             </TooltipProvider>
-          </>
-        )}
+            )
+          })}
+        </nav>
       </div>
+
+      {/* Unified Sidebar Footer */}
+      <div className="mt-auto border-t p-2 space-y-1">
+        <TooltipProvider delayDuration={0}>
+          {/* Balance Section */}
+          {status === 'authenticated' && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/account" className="block">
+                  <div className="flex h-10 items-center justify-between rounded-lg px-2 hover:bg-muted">
+                    {isCollapsed ? (
+                      <Wallet className="h-5 w-5 mx-auto" />
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <Wallet className="h-4 w-4" />
+                          <span className="text-sm font-medium">Balance</span>
+                        </div>
+                        {isLoading ? (
+                          <Skeleton className="h-5 w-14" />
+                        ) : (
+                          <span className="text-sm font-bold">
+                            {formatPriceFromCents(balanceInCents ?? 0)}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                Balance: {isLoading ? "..." : formatPriceFromCents(balanceInCents ?? 0)}
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Theme Toggle Section */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" className="w-full justify-start h-10 px-2" onClick={toggleTheme}>
+                {isCollapsed ? (
+                  <div className="flex justify-center w-full">
+                      <SunMoon className="h-5 w-5" />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-3">
+                      <SunMoon className="h-5 w-5" />
+                      <span className="text-sm font-medium">Theme</span>
+                    </div>
+                  </div>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Toggle Theme</TooltipContent>
+          </Tooltip>
+
+          {/* Help & Support Section */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" className="w-full justify-start h-10 px-2" asChild>
+                <Link href="/help">
+                  <HelpCircle className={cn("h-4 w-4", isCollapsed ? "mx-auto" : "mr-3")} />
+                  <span className={cn(isCollapsed && "sr-only")}>Help & Support</span>
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Help & Support</TooltipContent>
+          </Tooltip>
+
+          {/* Login/Logout Section */}
+          {status !== 'loading' && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {status === 'authenticated' ? (
+                  <Button variant="ghost" className="w-full justify-start h-10 px-2" onClick={() => signOut({ callbackUrl: '/login' })}>
+                    <LogOut className={cn("h-4 w-4", isCollapsed ? "mx-auto" : "mr-3")} />
+                    <span className={cn(isCollapsed && "sr-only")}>Logout</span>
+                  </Button>
+                ) : (
+                  <Button variant="ghost" className="w-full justify-start h-10 px-2" asChild>
+                    <Link href="/login">
+                      <LogIn className={cn("h-4 w-4", isCollapsed ? "mx-auto" : "mr-3")} />
+                      <span className={cn(isCollapsed && "sr-only")}>Login</span>
+                    </Link>
+                  </Button>
+                )}
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {status === 'authenticated' ? 'Logout' : 'Login'}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </TooltipProvider>
+
+        <Separator />
+        <div className="p-1">
+          <Button onClick={() => setIsCollapsed(!isCollapsed)} variant="ghost" className="w-full justify-center h-10">
+            {isCollapsed ? (
+              <ChevronRight className="h-5 w-5" />
+            ) : (
+              <ChevronLeft className="h-5 w-5" />
+            )}
+            <span className="sr-only">Toggle Sidebar</span>
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
 

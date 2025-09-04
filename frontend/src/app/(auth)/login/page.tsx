@@ -1,33 +1,55 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import { Loader2 } from 'lucide-react'; // Import Loader2 from lucide-react
 
 const GoogleSignInButton = () => {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/create';
+  
+  // Add a loading state
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSignIn = () => {
-    // 1. We call the 'keycloak' provider.
-    // 2. We pass the callbackUrl as the second argument.
-    // 3. We pass an object with 'kc_idp_hint: google' as the third argument.
+  const handleSignIn = async () => {
+    // Set loading to true when the sign-in process starts
+    setIsLoading(true);
+    // We call the 'keycloak' provider, pass the callbackUrl as the second argument, and pass an object with 'kc_idp_hint: google' as the third argument.
     signIn('keycloak', { callbackUrl }, { kc_idp_hint: 'google' });
   };
 
   return (
     <button
       onClick={handleSignIn}
-      className="bg-white text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors flex items-center gap-3"
+      disabled={isLoading}
+      className="relative bg-white text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-3 w-64 disabled:opacity-70 disabled:cursor-not-allowed"
     >
-      <Image src="/google-logo.svg" alt="Google logo" width={20} height={20} />
-      Sign in with Google
+      {isLoading ? (
+        <>
+          {/* Invisible placeholder to maintain the button's original size */}
+          <span className="invisible flex items-center gap-3">
+            <Image src="/google-logo.svg" alt="" width={20} height={20} />
+            Sign in with Google
+          </span>
+
+          {/* Absolutely positioned spinner, centered on top and larger */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </>
+      ) : (
+        <>
+          <Image src="/google-logo.png" alt="Google logo" width={20} height={20} />
+          <span>Sign in with Google</span>
+        </>
+      )}
     </button>
   );
 };
 
-// --- Array of your example video sources ---
+// --- Array of example video sources ---
 const videoSources = [
   '/videos/test_reddit_story.mp4',
   '/videos/test_reddit_story.mp4',

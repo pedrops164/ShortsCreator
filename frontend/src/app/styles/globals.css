@@ -45,34 +45,47 @@
 }
 
 .dark {
-  --color-background: #0f172a;
-  --color-foreground: #f8fafc;
-  --color-card: #1e293b;
-  --color-card-foreground: #f8fafc;
-  --color-popover: #1e293b;
-  --color-popover-foreground: #f8fafc;
+  /* Backgrounds: Shifted to pure black and very dark grays */
+  --color-background: #000000;
+  --color-foreground: #f4f4f5;
+  --color-card: #18181b;
+  --color-card-foreground: #f4f4f5;
+  --color-popover: #18181b;
+  --color-popover-foreground: #f4f4f5;
 
-  --color-muted: #334155;
-  --color-muted-foreground: #94a3b8;
-  --color-accent: #334155;
-  --color-accent-foreground: #f8fafc;
+  /* Muted & Accents: Shifted down a shade to match the darker theme */
+  --color-muted: #27272a;
+  --color-muted-foreground: #a1a1aa;
+  --color-accent: #27272a;
+  --color-accent-foreground: #f4f4f5;
 
-  --color-border: #334155;
-  --color-input: #334155;
+  /* Destructive & Secondary: Remains a deep red */
+  --color-secondary: #b91c1c;
+  --color-destructive: #b91c1c;
 
-  /* Dark mode custom colors */
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #cbd5e1;
-  --color-text-muted: #94a3b8;
-  --color-bg-gradient-from: #111827;
-  --color-bg-gradient-to: #1f2937;
-  --color-balance-bg-from: #713f12;
-  --color-balance-bg-to: #854d0e;
-  --color-balance-border: #a16207;
-  --color-balance-text: #fbbf24;
-  --color-yellow-primary: #fbbf24;
-  --color-yellow-secondary: #f59e0b;
-  --color-card-hover-border: #ca8a04;
+  /* Borders & Inputs: Darkened for a more subtle look */
+  --color-border: #27272a;
+  --color-input: #27272a;
+
+  /* --- Dark mode custom colors (Red & Yellow Theme) --- */
+  --color-text-primary: #f4f4f5;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #71717a;
+  
+  /* Main background gradient: A subtle effect from dark gray to pure black */
+  --color-bg-gradient-from: #18181b;
+  --color-bg-gradient-to: #000000;
+
+  /* Balance gradient: Remains a rich red-to-orange */
+  --color-balance-bg-from: #991b1b;
+  --color-balance-bg-to: #b45309;
+  --color-balance-border: #f59e0b;
+  --color-balance-text: #fef3c7;
+
+  /* Yellows: Kept vibrant for high contrast */
+  --color-yellow-primary: #f59e0b;
+  --color-yellow-secondary: #d97706;
+  --color-card-hover-border: #f59e0b;
 }
 
 @layer base {
