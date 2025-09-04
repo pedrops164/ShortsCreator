@@ -145,6 +145,7 @@ const Voice = ({ value, onChange }: SelectorProps) => {
 
   const handlePlayPause = (voiceId: string, sourceUrl: string) => {
     console.log("handlePlayPause called with voiceId:", voiceId, "sourceUrl:", sourceUrl);
+    const fullPath = (process.env.NEXT_PUBLIC_ASSET_CDN_URL || '') + sourceUrl;
     if (playingId === voiceId) {
       // Pause the current audio
       audioRef.current?.pause();
@@ -155,7 +156,7 @@ const Voice = ({ value, onChange }: SelectorProps) => {
         audioRef.current.pause();
       }
       // Start new audio
-      const newAudio = new Audio(sourceUrl);
+      const newAudio = new Audio(fullPath);
       audioRef.current = newAudio;
       setPlayingId(voiceId);
       newAudio.play();

@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Check } from 'lucide-react';
-import apiClient from '@/lib/apiClient'; // Assuming you have this configured
 import { FontAsset } from '@/types/assets'; // Adjust the import path as needed
 
 // --- Type Definition ---
@@ -27,6 +26,13 @@ interface SubtitleOptionsProps {
   hasErrors?: boolean; 
 }
 
+// --- Static font data ---
+const STATIC_FONT_ASSETS: FontAsset[] = [
+    { id: '1', assetId: 'montserrat', name: 'Montserrat ExtraBold', displayName: 'Montserrat', sourceUrl: '/assets/fonts/Montserrat-ExtraBold.ttf'},
+    { id: '2', assetId: 'oswald', name: 'Oswald Bold', displayName: 'Oswald', sourceUrl: '/assets/fonts/Oswald-Bold.ttf'},
+    { id: '3', assetId: 'theboldfont', name: 'THE BOLD FONT (FREE VERSION)', displayName: 'The Bold Font', sourceUrl: '/assets/fonts/THEBOLDFONT-FREEVERSION.ttf'},
+];
+
 // --- Helper Function to determine font format from URL ---
 const getFontFormat = (url: string): string | null => {
     const extension = url.split('.').pop()?.toLowerCase();
@@ -41,24 +47,10 @@ const getFontFormat = (url: string): string | null => {
 
 export function SubtitleOptions({ value, onChange, hasErrors }: SubtitleOptionsProps) {
   const [availableFonts, setAvailableFonts] = useState<FontAsset[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
 
-  // Effect to fetch font assets from the backend
   useEffect(() => {
-    async function fetchFonts() {
-      try {
-        const response = await apiClient.get<FontAsset[]>("/assets?type=FONT");
-        console.log("Fetched font assets:", response.data);
-        setAvailableFonts(response.data);
-      } catch (error) {
-        console.error("Error fetching font assets:", error);
-        // Handle error state in UI if necessary
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchFonts();
+    // Set the static data directly
+    setAvailableFonts(STATIC_FONT_ASSETS);
   }, []);
 
   // Effect to dynamically inject @font-face rules into the document head
@@ -78,7 +70,7 @@ export function SubtitleOptions({ value, onChange, hasErrors }: SubtitleOptionsP
           const format = getFontFormat(font.sourceUrl);
           // Only generate a rule if the format is recognized
           if (!format) {
-            console.warn(`Could not determine font format for ${font.name} from URL: ${font.sourceUrl}`);
+            console.warn(`Could not determine font format for ${font.name}`);
             return '';
           }
           return `
@@ -155,9 +147,6 @@ export function SubtitleOptions({ value, onChange, hasErrors }: SubtitleOptionsP
                 {/* --- Bottom Section: Font Selection --- */}
                 <div>
                   <Label className="text-xs font-semibold text-muted-foreground">Font</Label>
-                  {loading ? (
-                    <div className="text-center p-4 text-muted-foreground">Loading fonts...</div>
-                  ) : (
                     <div className="grid grid-cols-2 gap-3 mt-2">
                       {availableFonts.map((font) => (
                         <div
@@ -186,7 +175,6 @@ export function SubtitleOptions({ value, onChange, hasErrors }: SubtitleOptionsP
                         </div>
                       ))}
                     </div>
-                  )}
                 </div>
               </div>
             </>
