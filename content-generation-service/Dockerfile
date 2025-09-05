@@ -45,6 +45,13 @@ FROM eclipse-temurin:21-jre-jammy
 # Create a non-root user and group for better security
 RUN groupadd --system appuser && useradd --system --gid appuser appuser
 
+# Install ffmpeg for video processing.
+# We update apt, install the package, and then clean up the cache in a single layer
+# to keep the final image size smaller. This requires root permissions.
+RUN apt-get update && \
+    apt-get install -y ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+    
 # Set the working directory for the final image
 WORKDIR /app
 
