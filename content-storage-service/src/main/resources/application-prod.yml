@@ -9,6 +9,8 @@ server:
 spring:
   data:
     mongodb:
+      # PASSWORD IS ASSUMED TO BE URI ENCODED
+      uri: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/${MONGODB_DATABASE}?replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false
       ssl:
         enabled: true
         bundle: awscert
