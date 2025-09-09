@@ -42,8 +42,6 @@ public class VideoCompositionBuilder {
     private int height;
     private int width;
 
-    private final Path FONTS_DIR_PATH;
-
     // Progress listener
     private ProgressListener progressListener;
 
@@ -51,19 +49,6 @@ public class VideoCompositionBuilder {
     private static final Pattern FFMPEG_TIME_PATTERN = Pattern.compile("time=(\\d{2}:\\d{2}:\\d{2}\\.\\d{2})");
 
     public VideoCompositionBuilder() throws IOException {
-        // Use the ClassLoader to get a URL for the fonts directory
-        URL resourceUrl = this.getClass().getClassLoader().getResource("fonts/");
-        if (resourceUrl == null) {
-            throw new IOException("Fonts directory not found in resources: fonts/");
-        }
-
-        try {
-            // Convert the URL to a Path
-            this.FONTS_DIR_PATH = Paths.get(resourceUrl.toURI());
-        } catch (URISyntaxException e) {
-            throw new IOException("Invalid URI for fonts directory: " + resourceUrl, e);
-        }
-
         // Default output codecs
         this.outputOptions.add("-c:v");
         this.outputOptions.add("libx264");
@@ -228,12 +213,12 @@ public class VideoCompositionBuilder {
         return this;
     }
 
-    public VideoCompositionBuilder withSubtitles(Path subtitlePath) {
+    public VideoCompositionBuilder withSubtitles(Path fontDirsPath, Path subtitleFilePath) {
         if (filterComplexParts.isEmpty()) {
             throw new IllegalStateException("Subtitles can only be added after a video stream has been defined.");
         }
-        this.tempFilesToClean.add(subtitlePath);
-        String escapedPath = escapePathForFilter(subtitlePath.toAbsolutePath().toString());
+        this.tempFilesToClean.add(subtitleFilePath);
+        String escapedPath = escapePathForFilter(subtitleFilePath.toAbsolutePath().toString());
 
         // Get the video stream tag from the LAST operation (which includes all overlays)
         String currentVideoTag = this.lastVideoStreamTag;
@@ -241,7 +226,7 @@ public class VideoCompositionBuilder {
 
         // Create a new, separate filter for the subtitles
         String subtitleFilter = String.format(Locale.US, "%sass=filename='%s':fontsdir='%s'%s",
-                currentVideoTag, escapedPath, FONTS_DIR_PATH.toString(), newOutputTag);
+                currentVideoTag, escapedPath, fontDirsPath.toAbsolutePath().toString(), newOutputTag);
         // Add this filter as the NEW last step in the chain
         this.filterComplexParts.add(subtitleFilter);
         

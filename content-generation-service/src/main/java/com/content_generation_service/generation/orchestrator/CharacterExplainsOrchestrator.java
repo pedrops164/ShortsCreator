@@ -25,6 +25,7 @@ import com.content_generation_service.config.AppProperties;
 import com.content_generation_service.generation.model.CharacterNarration;
 import com.content_generation_service.generation.model.DialogueLineInfo;
 import com.content_generation_service.generation.model.NarrationSegment;
+import com.content_generation_service.generation.service.assets.AssetProvider;
 import com.content_generation_service.generation.service.audio.AudioService;
 import com.content_generation_service.generation.service.speechify.audio.SpeechifyVoiceCloningProvider;
 import com.content_generation_service.generation.service.visual.ImageUtilitiesService;
@@ -53,6 +54,7 @@ public class CharacterExplainsOrchestrator {
 
     private final ObjectProvider<VideoCompositionBuilder> videoCompositionBuilderProvider;
     private final AppProperties appProperties;
+    private final AssetProvider assetProvider;
 
     // Use a clear property for the shared temporary path
     @Value("${app.storage.shared-temp.base-path}")
@@ -103,6 +105,8 @@ public class CharacterExplainsOrchestrator {
             String position = subtitles.get("position").asText("bottom");
             // Generate subtitles from the audio timings
             Path subtitleFile = subtitleService.createAssFile(narration.getWordTimings(), font, color, position);
+            // Use the AssetProvider to get the path to the FONTS directory
+            Path fontDirPath = assetProvider.getAssetDir(appProperties.getAssets().getFonts());
 
             // Get dimensions from AppProperties
             int videoWidth = appProperties.getVideo().getWidth();
@@ -148,7 +152,7 @@ public class CharacterExplainsOrchestrator {
             }
 
             finalVideoPath = compositionBuilder
-                .withSubtitles(subtitleFile) // Add subtitles to the composition only after the image overlays
+                .withSubtitles(fontDirPath, subtitleFile) // Add subtitles to the composition only after the image overlays
                 .buildAndExecute(sharedOutputPath);
         } catch (Exception e) {
             log.error("Video composition failed for contentId: {}", contentId, e);

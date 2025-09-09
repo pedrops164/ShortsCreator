@@ -26,7 +26,7 @@ public class GenerationRequestListener {
     private final RedditStoryOrchestrator redditStoryOrchestrator; // Inject orchestrator bean
     private final CharacterExplainsOrchestrator characterExplainsOrchestrator;
 
-    // Note: You must configure a MessageConverter bean that uses Jackson for this to work with JsonNode out-of-the-box.
+    // Must configure a MessageConverter bean that uses Jackson for this to work with JsonNode out-of-the-box.
     // Spring Boot's auto-configuration for AMQP usually does this if Jackson is on the classpath.
     @RabbitListener(queues = "#{appProperties.rabbitmq.queues.generationRequests}")
     public void handleGenerationRequest(GenerationRequestV1 request) {

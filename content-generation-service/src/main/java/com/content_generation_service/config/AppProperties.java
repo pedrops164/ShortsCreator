@@ -90,4 +90,23 @@ public class AppProperties {
         private int width;
         private int height;
     }
+
+    private Assets assets = new Assets();
+
+    @Data
+    public static class Assets {
+        @NotEmpty
+        private String videos; // e.g., "assets/videos/"
+        @NotEmpty
+        private String characters; // e.g., "assets/images/characters/"
+        @NotEmpty
+        private String audio; // e.g., "assets/audio/"
+        @NotEmpty
+        private String redditImages; // e.g., "assets/images/reddit/"
+        @NotEmpty
+        private String images; // e.g., "assets/images/"
+        @NotEmpty
+        private String fonts; // e.g., "assets/fonts/"
+    }
+
 }

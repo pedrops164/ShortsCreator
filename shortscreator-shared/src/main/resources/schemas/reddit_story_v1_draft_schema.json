@@ -19,7 +19,7 @@
       "type": "string",
       "format": "uri",
       "description": "URL to the avatar image.",
-      "default": "assets/reddit/reddit_avatar_placeholder.png"
+      "default": "reddit/reddit_avatar_placeholder.png"
     },
     "username": {
       "type": "string",

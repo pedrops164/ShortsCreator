@@ -1,5 +1,6 @@
 package com.content_generation_service.generation.orchestrator;
 
+import com.content_generation_service.generation.service.assets.AssetProvider;
 import com.content_generation_service.generation.service.audio.AudioService;
 import com.content_generation_service.generation.service.audio.TextToSpeechProvider;
 import com.content_generation_service.generation.service.audio.TextToSpeechService.ParsedVoiceId;
@@ -50,6 +51,7 @@ public class RedditStoryOrchestrator {
     private final AudioService audioService;
 
     private final ObjectProvider<VideoCompositionBuilder> videoCompositionBuilderProvider;
+    private final AssetProvider assetProvider;
     private final AppProperties appProperties;
 
     // Use a clear property for the shared temporary path
@@ -90,6 +92,8 @@ public class RedditStoryOrchestrator {
             String color = subtitles.get("color").asText("#FFFFFF");
             String position = subtitles.get("position").asText("bottom");
             Path subtitleFile = subtitleService.createAssFile(narration.getWordTimings(), font, color, position);
+            // Use the AssetProvider to get the path to the FONTS directory
+            Path fontDirPath = assetProvider.getAssetDir(appProperties.getAssets().getFonts());
 
             // Get dimensions from AppProperties
             int videoWidth = appProperties.getVideo().getWidth();
@@ -101,7 +105,7 @@ public class RedditStoryOrchestrator {
                 .withBackground(backgroundVideo) // Assuming 9:16 aspect ratio
                 .withNarration(narration.getAudioFilePath())
                 .withCenteredOverlay(titleImage, 0, narration.getTitleDurationSeconds(), false)
-                .withSubtitles(subtitleFile)
+                .withSubtitles(fontDirPath, subtitleFile)
                 .withOutputDuration(narration.getDurationSeconds())
                 .withProgressListener(scopedProgressListener) // Pass the scoped listener
                 .buildAndExecute(sharedOutputPath);

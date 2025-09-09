@@ -1,7 +1,11 @@
 package com.content_generation_service.generation.service.visual;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import com.content_generation_service.config.AppProperties;
+import com.content_generation_service.generation.service.assets.AssetProvider;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -11,9 +15,11 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +32,11 @@ import java.awt.Dimension;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ImageUtilitiesService {
+
+    private final AssetProvider assetProvider; // Inject the interface
+    private final AppProperties appProperties; // Inject the config class
 
     /**
      * Reads an image file and returns its dimensions.
@@ -48,19 +58,20 @@ public class ImageUtilitiesService {
     }
 
     /**
-     * Loads an image from the application's resources folder.
+     * Loads an image from the application's images folder.
      *
-     * @param resourcePath The path to the image within the resources folder (e.g., "assets/image.png").
+     * @param resourcePath The path to the image within the images folder (e.g., "reddit/image.png").
      * @return The loaded image as a BufferedImage.
      * @throws IOException If the resource cannot be found or read.
      */
-    public BufferedImage loadImageFromResources(String resourcePath) throws IOException {
-        log.debug("Loading image from resource path: {}", resourcePath);
-        try (InputStream is = this.getClass().getClassLoader().getResourceAsStream(resourcePath)) {
+    public BufferedImage loadImage(String relativePathFileName) throws IOException {
+        log.debug("Loading image from resource path: {}", relativePathFileName);
+        Path imagePath = assetProvider.getAssetPath(appProperties.getAssets().getImages(), relativePathFileName);
+        try (InputStream is = Files.newInputStream(imagePath)) {
             if (is == null) {
-                throw new IOException("Resource not found: " + resourcePath);
+                throw new IOException("Resource not found: " + imagePath);
             }
-            return ImageIO.read(is);
+            return ImageIO.read(new BufferedInputStream(is));
         }
     }
 

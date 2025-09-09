@@ -38,7 +38,6 @@ const defaultParams: RedditStoryParams = {
   comments: [],
   backgroundVideoId: '',
   backgroundMusicId: 'none',
-  avatarImageUrl: 'assets/reddit/reddit_avatar_placeholder.png',
   aspectRatio: '9:16',
   subtitles: {
     show: true,

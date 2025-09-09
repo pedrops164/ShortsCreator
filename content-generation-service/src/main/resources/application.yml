@@ -54,6 +54,14 @@ app:
     # Default video width and height
     width: 1080
     height: 1920
+  assets:
+    videos: "videos/"
+    characters: "images/characters/"
+    audio: "audio/"
+    reddit-images: "images/reddit/"
+    images: "images/"
+    fonts: "fonts/"
+    base-path: ${ASSETS_FOLDER_PATH}
 
 management:
   endpoints:

@@ -60,7 +60,7 @@ public class RedditImageService {
         log.info("Starting simplified Reddit post image creation process.");
 
         final String theme = params.get("theme").asText("dark");
-        final String avatarUrl = params.get("avatarImageUrl").asText();
+        final String avatarUrl = params.path("avatarImageUrl").asText("reddit/reddit_avatar_placeholder.png");
         final String subreddit = params.get("subreddit").asText();
         final String username = params.get("username").asText();
         final String postTitle = params.get("postTitle").asText();
@@ -70,19 +70,19 @@ public class RedditImageService {
         final Color secondaryColor = "dark".equals(theme) ? DARK_TEXT_SECONDARY : LIGHT_TEXT_SECONDARY;
 
         try {
-            // 2. Generate each section of the image
+            // Generate each section of the image
             BufferedImage header = createHeader(avatarUrl, subreddit, username, bgColor, primaryColor, secondaryColor);
             BufferedImage body = createTitleBody(postTitle, bgColor, primaryColor);
             BufferedImage footer = createFooter(bgColor, secondaryColor);
 
-            // 3. Combine all sections vertically
+            // Combine all sections vertically
             BufferedImage finalImage = imageUtils.combineVertically(header, body, footer);
 
-            // 4. FIX: Apply rounded corners to the final composite image
+            // Apply rounded corners to the final composite image
             int cornerRadius = 50;
             BufferedImage roundedImage = imageUtils.makeRoundedCorner(finalImage, cornerRadius);
 
-            // 5. Save the final rounded image to a temp file
+            // Save the final rounded image to a temp file
             Path outputPath = Files.createTempFile("reddit-post-" + UUID.randomUUID(), ".png");
             imageUtils.saveImage(roundedImage, outputPath, "png");
 
@@ -95,8 +95,7 @@ public class RedditImageService {
     }
 
     private BufferedImage createHeader(String avatarUrl, String subreddit, String username, Color bgColor, Color primaryColor, Color secondaryColor) throws IOException {
-        //BufferedImage avatar = imageUtils.loadImageFromUrl(avatarUrl);
-        BufferedImage avatar = imageUtils.loadImageFromResources(avatarUrl);
+        BufferedImage avatar = imageUtils.loadImage(avatarUrl);
         BufferedImage resizedAvatar = imageUtils.resizeImage(avatar, AVATAR_SIZE, AVATAR_SIZE);
 
         int headerHeight = AVATAR_SIZE + (2 * VERTICAL_PADDING);

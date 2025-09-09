@@ -4,11 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import com.content_generation_service.config.AppProperties;
+import com.content_generation_service.generation.service.assets.AssetProvider;
+
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * Responsible for retrieving video assets, such as background videos.
@@ -18,49 +18,29 @@ import java.nio.file.Paths;
 @RequiredArgsConstructor
 public class VideoAssetService {
 
+    private final AssetProvider assetProvider; // Inject the interface
+    private final AppProperties appProperties; // Inject the config class
+
     /**
      * Fetches the background video file based on its ID.
-     * This implementation is a stub. A real implementation would fetch from
-     * a cloud storage provider (e.g., S3) or a local asset directory.
      *
      * @param videoId The unique identifier for the background video.
      * @return The local file system path to the video.
      */
     public Path getBackgroundVideo(String videoId) throws IOException {
         log.info("Fetching background video for videoId: {}", videoId);
-
-        String resourcePath = "assets/videos/" + videoId + ".mp4";
-        URL resourceUrl = this.getClass().getClassLoader().getResource(resourcePath);
-
-        if (resourceUrl == null) {
-            throw new IOException("Background video not found in resources: " + resourcePath);
-        }
-
-        log.debug("Resolved background video URL: {}", resourceUrl);
-
-        try {
-            return Paths.get(resourceUrl.toURI());
-        } catch (URISyntaxException e) {
-            throw new IOException("Invalid URI for background video: " + resourceUrl, e);
-        }
+        String assetName = videoId + ".mp4";
+        return assetProvider.getAssetPath(appProperties.getAssets().getVideos(), assetName);
     }
 
+    /**
+     * Fetches the character image file based on its ID.
+     * @param characterId The unique identifier for the character image.
+     * @return The local file system path to the character image.
+     */
     public Path getCharacterImage(String characterId) throws IOException {
         log.info("Fetching character image for characterId: {}", characterId);
-
-        String resourcePath = "assets/characters/" + characterId + ".png";
-        URL resourceUrl = this.getClass().getClassLoader().getResource(resourcePath);
-
-        if (resourceUrl == null) {
-            throw new IOException("Character image not found in resources: " + resourcePath);
-        }
-
-        log.debug("Resolved character image URL: {}", resourceUrl);
-
-        try {
-            return Paths.get(resourceUrl.toURI());
-        } catch (URISyntaxException e) {
-            throw new IOException("Invalid URI for character image: " + resourceUrl, e);
-        }
+        String assetName = characterId + ".png";
+        return assetProvider.getAssetPath(appProperties.getAssets().getCharacters(), assetName);
     }
 }
