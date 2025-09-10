@@ -126,6 +126,17 @@
 			<version>6.1.0</version>
 			<scope>provided</scope>
 		</dependency>
+
+		<!-- AWS dependencies -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>url-connection-client</artifactId>
+		</dependency>
+
 	</dependencies>
 
 	<build>

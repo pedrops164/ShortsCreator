@@ -20,3 +20,12 @@ spring:
         awscert:
           truststore:
             certificate: classpath:global-bundle.pem
+
+app:
+  aws:
+    s3:
+      # aws S3 bucket where generated videos are stored
+      bucket-name: shorts-creator-prod-videos
+
+aws:
+  region: eu-north-1

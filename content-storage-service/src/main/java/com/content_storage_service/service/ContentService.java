@@ -2,8 +2,6 @@ package com.content_storage_service.service;
 
 import com.content_storage_service.client.PaymentServiceClient;
 import com.content_storage_service.config.AppProperties;
-import com.content_storage_service.exception.InsufficientFundsClientException;
-import com.content_storage_service.exception.PaymentServiceInternalErrorException;
 import com.content_storage_service.model.Content;
 import com.shortscreator.shared.enums.ContentType;
 import com.shortscreator.shared.validation.TemplateValidator;
@@ -43,6 +41,7 @@ public class ContentService {
     private final Map<String, ContentType> templateToContentTypeMap;
     private final PriceCalculationService priceCalculationService;
     private final PaymentServiceClient paymentServiceClient;
+    private final DownloadService downloadService;
 
     /**
      * Creates a new content draft.
@@ -246,6 +245,7 @@ public class ContentService {
                     GeneratedVideoDetailsV1 details = generationResult.getGeneratedVideoDetails();
                     OutputAssetsV1 outputAssets = new OutputAssetsV1(
                         details.getS3Url(),
+                        details.getS3Key(),
                         details.getDurationSeconds() // Use the real duration
                     );
                     content.setOutputAssets(outputAssets);
@@ -272,7 +272,7 @@ public class ContentService {
         return templateToContentTypeMap.get(templateId);
     }
 
-    // New method to delete content
+    // Delete content
     public Mono<Void> deleteContent(String contentId, String userId) {
         log.info("User [{}] is attempting to delete content [{}]", userId, contentId);
         // First, verify that the content exists and belongs to the user
@@ -296,5 +296,24 @@ public class ContentService {
                         return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage()));
                     }
                 });
+    }
+
+    /**
+     * Gets the download URL for a content draft.
+     *
+     * @param contentId The ID of the content draft.
+     * @param userId The ID of the user owning the draft.
+     * @return A String representing the download URL.
+     */
+    public Mono<String> getDownloadUrl(String contentId, String userId) {
+        return contentRepository.findById(contentId)
+            .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Content not found")))
+            .flatMap(content -> {
+                if (content.getStatus() != ContentStatus.COMPLETED || content.getOutputAssets() == null) {
+                    return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Video is not available for download"));
+                }
+                // Delegate the actual URL generation to the injected service
+                return downloadService.getDownloadUrl(content);
+            });
     }
 }

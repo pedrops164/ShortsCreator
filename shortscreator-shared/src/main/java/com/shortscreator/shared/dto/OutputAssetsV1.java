@@ -11,5 +11,6 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 public class OutputAssetsV1 {
     private String finalVideoUrl;
+    private String finalVideoS3Key;
     private double durationSeconds;
 }

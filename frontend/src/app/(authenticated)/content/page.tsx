@@ -116,9 +116,41 @@ export default function ContentLibrary() {
   const totalPages = Math.ceil(contents.length / ITEMS_PER_PAGE);
 
   // --- Action Handlers ---
-  const handleDownload = (item: Draft) => {
-    //TODO: Implement download logic
-    console.log(`Downloading item: ${item.id}`);
+  const handleDownload = async (item: Draft) => {
+      // Create a temporary state to track loading for this specific item
+      // This prevents all download buttons from showing a loading state
+      const button = document.getElementById(`download-btn-${item.id}`) as HTMLButtonElement | null;
+      if (button) {
+          button.disabled = true;
+          button.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Downloading...';
+      }
+
+      try {
+          const response = await apiClient.get<{ url: string }>(`/content/${item.id}/download-url`);
+          const presignedUrl = response.data.url;
+
+          // Create a temporary link element to trigger the download
+          const link = document.createElement('a');
+          link.href = presignedUrl;
+          
+          // Suggest a filename for the user
+          const fileName = `${getDraftTitle(item).replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp4`;
+          link.setAttribute('download', fileName);
+          
+          // Append to the document, click, and then remove
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+      } catch (error) {
+          console.error("Download failed", error);
+          alert("Could not get download link. Please try again later.");
+      } finally {
+          if (button) {
+              button.disabled = false;
+              button.innerHTML = '<svg class="h-4 w-4 mr-1" ...>Download</svg>'; // Revert to original content
+          }
+      }
   };
 
   const handleGetHelp = (item: Draft) => {
@@ -292,9 +324,13 @@ export default function ContentLibrary() {
                             <TableCell className="text-right">
                                 <div className="flex items-center justify-end space-x-2">
                                 {item.status === ContentStatus.COMPLETED && (
-                                    <Button size="sm" onClick={() => handleDownload(item)}>
-                                    <Download className="h-4 w-4 mr-1" />
-                                    Download
+                                    <Button
+                                      id={`download-btn-${item.id}`} // Add unique ID here
+                                      size="sm"
+                                      onClick={() => handleDownload(item)}
+                                    >
+                                      <Download className="h-4 w-4 mr-1" />
+                                      Download
                                     </Button>
                                 )}
                                 {item.status === ContentStatus.FAILED && (

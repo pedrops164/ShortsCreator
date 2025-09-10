@@ -85,4 +85,19 @@ public class ContentController {
             @RequestHeader("X-User-ID") String userId) {
         return contentService.calculateDraftPrice(contentId, userId);
     }
+
+    // Define a simple response DTO
+    record DownloadUrlResponse(String url) {}
+
+    /**
+     * Endpoint to get a pre-signed download URL for the final video asset.
+     * @param id The ID of the content.
+     * @param jwt The JWT token containing user information.
+     * @return A Mono emitting the download URL response.
+     */
+    @GetMapping("/{contentId}/download-url")
+    public Mono<DownloadUrlResponse> getDownloadUrl(@PathVariable String contentId, @RequestHeader("X-User-ID") String userId) {
+        return contentService.getDownloadUrl(contentId, userId)
+                            .map(DownloadUrlResponse::new);
+    }
 }
