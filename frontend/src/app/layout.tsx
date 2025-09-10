@@ -5,8 +5,12 @@ import SessionProvider from "@/components/layout/SessionProvider";
 import SessionChecker from '@/components/SessionChecker';
 
 export const metadata: Metadata = {
-  title: 'Shorts Creator',
-  description: 'Automate your short form content',
+  // Updated Title and Description
+  title: {
+    template: '%s | Mad Shorts',
+    default: 'Mad Shorts | AI Video Generator for Viral Content',
+  },
+  description: 'Automate your short-form content. Turn Reddit threads and creative ideas into viral shorts for TikTok and YouTube in minutes with our AI video generator.',
 };
 
 /**

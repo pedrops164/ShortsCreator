@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'd3hucckltpi95a.cloudfront.net',
       },
+      {
+        protocol: 'https',
+        hostname: 'shortscreator-example-videos.s3.eu-north-1.amazonaws.com',
+      },
     ],
   },
 };
