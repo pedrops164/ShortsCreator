@@ -5,6 +5,7 @@ import com.content_generation_service.generation.service.audio.AudioService;
 import com.content_generation_service.generation.service.audio.TextToSpeechProvider;
 import com.content_generation_service.generation.service.audio.TextToSpeechService.ParsedVoiceId;
 import com.content_generation_service.generation.service.reddit.visual.RedditImageService;
+import com.content_generation_service.generation.service.storage.StorageService;
 import com.content_generation_service.generation.service.visual.ProgressListener;
 import com.content_generation_service.generation.service.visual.SubtitleService;
 import com.content_generation_service.generation.service.visual.VideoAssetService;
@@ -32,7 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 
-import com.shortscreator.shared.dto.VideoUploadJobV1;
+import com.shortscreator.shared.dto.GeneratedVideoDetailsV1;
 
 import com.content_generation_service.generation.service.audio.TextToSpeechService;
 
@@ -54,12 +55,15 @@ public class RedditStoryOrchestrator {
     private final AssetProvider assetProvider;
     private final AppProperties appProperties;
 
+    // Service responsible for uploading to S3 and cleaning up local files
+    private final StorageService storageService;
+
     // Use a clear property for the shared temporary path
     @Value("${app.storage.shared-temp.base-path}")
     private String sharedTempBasePath;
     
     // This is the main business logic flow
-    public VideoUploadJobV1 generate(JsonNode params, String contentId, String userId) {
+    public GeneratedVideoDetailsV1 generate(JsonNode params, String contentId, String userId) {
         log.info("Starting Reddit Story generation...");
 
         // Create a scoped listener for this specific content generation
@@ -115,16 +119,9 @@ public class RedditStoryOrchestrator {
             throw new RuntimeException("Failed to compose final video", e);
         }
 
-        // Create and send the generation result message ---
-        String destinationPath = String.format("reddit-stories/%s/%s.mp4", contentId, UUID.randomUUID());
-
-        VideoUploadJobV1 job = new VideoUploadJobV1(
-            finalVideoPath.toAbsolutePath().toString(),
-            destinationPath,
-            userId
-        );
+        GeneratedVideoDetailsV1 videoDetails = storageService.storeFinalVideo(finalVideoPath, REDDIT_STORY_TEMPLATE_ID, contentId, userId);
         scopedProgressListener.onComplete(); // Notify the listener of success
-        return job;
+        return videoDetails;
     }
 
 

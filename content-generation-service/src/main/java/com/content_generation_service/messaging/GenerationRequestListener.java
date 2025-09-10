@@ -6,9 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
 
+import com.shortscreator.shared.dto.GeneratedVideoDetailsV1;
 import com.shortscreator.shared.dto.GenerationRequestV1;
 import com.shortscreator.shared.dto.GenerationResultV1;
-import com.shortscreator.shared.dto.VideoUploadJobV1;
 import com.shortscreator.shared.enums.ContentStatus;
 import com.shortscreator.shared.validation.TemplateValidator;
 import com.content_generation_service.generation.orchestrator.CharacterExplainsOrchestrator;
@@ -40,11 +40,11 @@ public class GenerationRequestListener {
             if (RedditStoryOrchestrator.REDDIT_STORY_TEMPLATE_ID.equals(request.getTemplateId())) {
                 
                 // The orchestrator does all the heavy lifting
-                VideoUploadJobV1 job = redditStoryOrchestrator.generate(request.getTemplateParams(), request.getContentId(), request.getUserId());
+                GeneratedVideoDetailsV1 videoDetails = redditStoryOrchestrator.generate(request.getTemplateParams(), request.getContentId(), request.getUserId());
                 GenerationResultV1 generationResult = new GenerationResultV1(
                     request.getContentId(),
                     ContentStatus.COMPLETED,
-                    job,
+                    videoDetails,
                     null // No error message since this is a successful job
                 );
                 // send job to CSS
@@ -52,11 +52,11 @@ public class GenerationRequestListener {
                 log.info("Successfully dispatched video upload job for contentId: {}", request.getContentId());
             } else if (CharacterExplainsOrchestrator.CHARACTER_EXPLAINS_TEMPLATE_ID.equals(request.getTemplateId())) {
                 // Handle the "Character Explains" template
-                VideoUploadJobV1 job = characterExplainsOrchestrator.generate(request.getTemplateParams(), request.getContentId(), request.getUserId());
+                GeneratedVideoDetailsV1 videoDetails = characterExplainsOrchestrator.generate(request.getTemplateParams(), request.getContentId(), request.getUserId());
                 GenerationResultV1 generationResult = new GenerationResultV1(
                     request.getContentId(),
                     ContentStatus.COMPLETED,
-                    job,
+                    videoDetails,
                     null // No error message since this is a successful job
                 );
                 // send job to CSS

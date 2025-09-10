@@ -12,7 +12,8 @@ app:
     # Both CGS and CSS must have access to this location.
     shared-temp:
       base-path: "${user.home}/app-dev/shared-temp-storage"
-
+    local:
+      upload-dir: "${user.home}/app-dev/local-storage/uploads"
 spring:
   rabbitmq:
     ssl:

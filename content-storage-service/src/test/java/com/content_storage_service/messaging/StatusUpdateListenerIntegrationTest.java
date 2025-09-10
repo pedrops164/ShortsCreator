@@ -3,9 +3,8 @@ package com.content_storage_service.messaging;
 import com.content_storage_service.config.AppProperties;
 import com.content_storage_service.model.Content;
 import com.content_storage_service.repository.ContentRepository;
-import com.content_storage_service.service.VideoUploadProcessorService;
+import com.shortscreator.shared.dto.GeneratedVideoDetailsV1;
 import com.shortscreator.shared.dto.GenerationResultV1;
-import com.shortscreator.shared.dto.VideoUploadJobV1;
 import com.shortscreator.shared.enums.ContentStatus;
 import com.shortscreator.shared.enums.ContentType;
 import org.junit.jupiter.api.AfterEach;
@@ -70,8 +69,6 @@ class StatusUpdateListenerIntegrationTest {
     private RabbitTemplate rabbitTemplate;
     @Autowired
     private ContentRepository contentRepository;
-    @MockitoBean
-    private VideoUploadProcessorService processorService;
 
     // Clean up the database after each test to ensure isolation
     @AfterEach
@@ -82,8 +79,6 @@ class StatusUpdateListenerIntegrationTest {
     @Test
     void whenCompletedStatusUpdateReceived_thenContentIsUpdatedInDb() {
         // --- ARRANGE ---
-        // set processGenerationResult function to do nothing
-        doNothing().when(processorService).processUploadJob(any(VideoUploadJobV1.class));
         // Create and save a document in a "processing" state to the test database.
         Content contentToUpdate = Content.builder()
                 .userId("user-123")
@@ -96,11 +91,11 @@ class StatusUpdateListenerIntegrationTest {
         String contentId = savedContent.getId();
 
         // Create the DTO for the message we're going to send.
-        VideoUploadJobV1 job = new VideoUploadJobV1();
+        GeneratedVideoDetailsV1 videoDetails = new GeneratedVideoDetailsV1();
         GenerationResultV1 generationResult = new GenerationResultV1(
                 contentId,
                 ContentStatus.COMPLETED,
-                job,
+                videoDetails,
                 null
         );
         final String exchangeName = appProperties.getRabbitmq().getExchange();

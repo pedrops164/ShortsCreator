@@ -28,6 +28,7 @@ import com.content_generation_service.generation.model.NarrationSegment;
 import com.content_generation_service.generation.service.assets.AssetProvider;
 import com.content_generation_service.generation.service.audio.AudioService;
 import com.content_generation_service.generation.service.speechify.audio.SpeechifyVoiceCloningProvider;
+import com.content_generation_service.generation.service.storage.StorageService;
 import com.content_generation_service.generation.service.visual.ImageUtilitiesService;
 import com.content_generation_service.generation.service.visual.ProgressListener;
 import com.content_generation_service.generation.service.visual.SubtitleService;
@@ -35,7 +36,7 @@ import com.content_generation_service.generation.service.visual.VideoAssetServic
 import com.content_generation_service.generation.service.visual.VideoCompositionBuilder;
 import com.content_generation_service.messaging.VideoStatusUpdateDispatcher;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.shortscreator.shared.dto.VideoUploadJobV1;
+import com.shortscreator.shared.dto.GeneratedVideoDetailsV1;
 
 @Slf4j
 @Service
@@ -55,12 +56,13 @@ public class CharacterExplainsOrchestrator {
     private final ObjectProvider<VideoCompositionBuilder> videoCompositionBuilderProvider;
     private final AppProperties appProperties;
     private final AssetProvider assetProvider;
+    private final StorageService storageService;
 
     // Use a clear property for the shared temporary path
     @Value("${app.storage.shared-temp.base-path}")
     private String sharedTempBasePath;
 
-    public VideoUploadJobV1 generate(JsonNode params, String contentId, String userId) {
+    public GeneratedVideoDetailsV1 generate(JsonNode params, String contentId, String userId) {
         log.info("Starting Character Explains generation...");
 
         // Create a scoped listener for this specific content generation
@@ -160,15 +162,9 @@ public class CharacterExplainsOrchestrator {
             throw new RuntimeException("Failed to compose final video", e);
         }
 
-        // Create and return the video upload job
-        String destinationPath = String.format("character-explains/%s/%s.mp4", contentId, UUID.randomUUID());
-        VideoUploadJobV1 job = new VideoUploadJobV1(
-            finalVideoPath.toAbsolutePath().toString(),
-            destinationPath,
-            userId
-        );
-        scopedProgressListener.onComplete();
-        return job;
+        GeneratedVideoDetailsV1 videoDetails = storageService.storeFinalVideo(finalVideoPath, CHARACTER_EXPLAINS_TEMPLATE_ID, contentId, userId);
+        scopedProgressListener.onComplete(); // Notify the listener of success
+        return videoDetails;
     }
 
     /**

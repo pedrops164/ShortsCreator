@@ -3,9 +3,9 @@ package com.content_generation_service.messaging;
 import com.content_generation_service.config.AppProperties;
 import com.content_generation_service.generation.orchestrator.RedditStoryOrchestrator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shortscreator.shared.dto.GeneratedVideoDetailsV1;
 import com.shortscreator.shared.dto.GenerationRequestV1;
 import com.shortscreator.shared.dto.GenerationResultV1;
-import com.shortscreator.shared.dto.VideoUploadJobV1;
 import com.shortscreator.shared.enums.ContentStatus;
 import com.shortscreator.shared.validation.TemplateValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,10 +68,10 @@ class GenerationRequestListenerTest {
     void whenValidatorSucceeds_thenGenerationProceeds() {
         // Instruct the mock validator to do nothing (succeed)
         doNothing().when(templateValidator).validate(anyString(), any(), eq(true));
-        VideoUploadJobV1 mockJob = new VideoUploadJobV1();
+        GeneratedVideoDetailsV1 videoDetails = new GeneratedVideoDetailsV1();
         when(redditStoryOrchestrator.generate(any(), any(), any()))
-            .thenReturn(mockJob);
-        
+            .thenReturn(videoDetails);
+
         listener.handleGenerationRequest(sampleRequest);
 
         // ASSERT: Verify that the "success" path was taken.
@@ -80,7 +80,7 @@ class GenerationRequestListenerTest {
         verify(templateValidator).validate(anyString(), any(), eq(true));
         verify(generationResultDispatcher).dispatch(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(ContentStatus.COMPLETED);
-        assertThat(captor.getValue().getVideoUploadJobV1()).isEqualTo(mockJob);
+        assertThat(captor.getValue().getGeneratedVideoDetails()).isEqualTo(videoDetails);
         verify(redditStoryOrchestrator, times(1)).generate(any(), any(), any());
     }
 

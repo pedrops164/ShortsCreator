@@ -4,9 +4,9 @@ import com.content_generation_service.config.AppProperties;
 import com.content_generation_service.generation.orchestrator.RedditStoryOrchestrator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shortscreator.shared.dto.GeneratedVideoDetailsV1;
 import com.shortscreator.shared.dto.GenerationRequestV1;
 import com.shortscreator.shared.dto.GenerationResultV1;
-import com.shortscreator.shared.dto.VideoUploadJobV1;
 import com.shortscreator.shared.enums.ContentStatus;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -171,9 +171,9 @@ class GenerationRequestListenerIntegrationTest {
         // --- ARRANGE ---
         final String exchangeName = appProperties.getRabbitmq().getExchange();
         final String generationRoutingKey = generationRequestPrefix + "reddit_story_v1";
-        VideoUploadJobV1 mockJob = new VideoUploadJobV1();
+        GeneratedVideoDetailsV1 videoDetails = new GeneratedVideoDetailsV1();
         when(redditStoryOrchestrator.generate(any(), any(), any()))
-            .thenReturn(mockJob);
+            .thenReturn(videoDetails);
 
         // This payload has all the required fields.
         String validParamsJson = """

@@ -44,9 +44,6 @@ class ContentServiceTest {
     @InjectMocks // Creates an instance of ContentService and injects the mocks
     private ContentService contentService;
 
-    @Mock
-    private VideoUploadProcessorService processorService; // Mock the processor service
-
     private Content sampleDraft;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -196,8 +193,6 @@ class ContentServiceTest {
         @Test
         void whenStatusIsCompleted_updatesContentCorrectly() {
             // ARRANGE
-            // do nothing when processorService.processUploadJob is called
-            doNothing().when(processorService).processUploadJob(any());
             GenerationResultV1 generationResult = new GenerationResultV1("contend-id-123", ContentStatus.COMPLETED, null, null);
             when(contentRepository.findById(anyString())).thenReturn(Mono.just(sampleDraft));
             when(contentRepository.save(any(Content.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));

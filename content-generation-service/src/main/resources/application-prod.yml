@@ -12,3 +12,10 @@ app:
     # Both CGS and CSS must have access to this location.
     shared-temp:
       base-path: ${SHARED_TEMP_STORAGE_PATH}
+  aws:
+    s3:
+      # aws S3 bucket where generated videos are stored
+      bucket-name: shorts-creator-prod-videos
+
+aws:
+  region: eu-north-1

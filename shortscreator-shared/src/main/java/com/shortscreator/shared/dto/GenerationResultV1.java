@@ -12,6 +12,6 @@ import com.shortscreator.shared.enums.ContentStatus;
 public class GenerationResultV1 {
     private String contentId;
     private ContentStatus status; // e.g., "COMPLETED", "FAILED"
-    private VideoUploadJobV1 videoUploadJobV1;
+    private GeneratedVideoDetailsV1 generatedVideoDetails;
     private String errorMessage;
 }

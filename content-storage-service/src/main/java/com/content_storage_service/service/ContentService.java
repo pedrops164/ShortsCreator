@@ -12,10 +12,10 @@ import com.shortscreator.shared.enums.ContentStatus;
 import com.content_storage_service.repository.ContentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.shortscreator.shared.dto.ContentPriceV1;
+import com.shortscreator.shared.dto.GeneratedVideoDetailsV1;
 import com.shortscreator.shared.dto.GenerationRequestV1;
 import com.shortscreator.shared.dto.GenerationResultV1;
 import com.shortscreator.shared.dto.OutputAssetsV1;
-import com.shortscreator.shared.dto.VideoUploadJobV1;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
@@ -40,7 +40,6 @@ public class ContentService {
 
     private final RabbitTemplate rabbitTemplate;
     private final AppProperties appProperties;
-    private final VideoUploadProcessorService processorService;
     private final Map<String, ContentType> templateToContentTypeMap;
     private final PriceCalculationService priceCalculationService;
     private final PaymentServiceClient paymentServiceClient;
@@ -244,11 +243,10 @@ public class ContentService {
                 content.setStatus(newStatus);
                 if (newStatus == ContentStatus.COMPLETED) {
                     log.info("Content [{}] has been successfully COMPLETED.", content.getId());
-                    VideoUploadJobV1 job = generationResult.getVideoUploadJobV1();
-                    String finalUrl = processorService.processUploadJob(job);
+                    GeneratedVideoDetailsV1 details = generationResult.getGeneratedVideoDetails();
                     OutputAssetsV1 outputAssets = new OutputAssetsV1(
-                        finalUrl,
-                        60 // Example duration in seconds
+                        details.getS3Url(),
+                        details.getDurationSeconds() // Use the real duration
                     );
                     content.setOutputAssets(outputAssets);
                 } else if (newStatus == ContentStatus.FAILED) {
