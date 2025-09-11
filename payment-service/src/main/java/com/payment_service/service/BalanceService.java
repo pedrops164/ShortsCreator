@@ -13,6 +13,7 @@ import com.payment_service.repository.GenerationChargeRepository;
 import com.payment_service.repository.UserBalanceRepository;
 import com.shortscreator.shared.dto.DebitRequestV1;
 import com.shortscreator.shared.enums.ChargeStatus;
+import com.shortscreator.shared.enums.ContentType;
 import com.payment_service.exception.InsufficientFundsException;
 import com.payment_service.exception.ResourceNotFoundException;
 
@@ -65,11 +66,10 @@ public class BalanceService {
     @Transactional
     public void debitUserBalance(DebitRequestV1 debitRequest) {
         String userId = debitRequest.userId();
-        long amountToDebit = debitRequest.priceDetails().finalPrice();
-        String currency = debitRequest.priceDetails().currency();
+        Integer amountToDebit = debitRequest.amountInCents();
+        String currency = "USD"; // USD by default
 
-        log.info("Attempting to debit {} {} from user ID: {} for content type: {}", amountToDebit, currency, userId, debitRequest.contentType());
-
+        log.info("Attempting to debit {} {} from user ID: {} with metadata: {}", amountToDebit, currency, userId, debitRequest.metadata());
         // This read operation is locked by the transaction until it commits or rolls back.
         UserBalance userBalance = userBalanceRepository.findByUserId(userId)
             .orElseThrow(() -> {
@@ -96,18 +96,23 @@ public class BalanceService {
         userBalance.setBalanceInCents(newBalance);
         userBalanceRepository.save(userBalance); // The transaction commit will persist this change.
 
-        // Create and save the generation charge record
-        GenerationCharge charge = GenerationCharge.builder()
-                .userId(debitRequest.userId())
-                .contentId(debitRequest.contentId())
-                .contentType(debitRequest.contentType())
-                .amount(debitRequest.priceDetails().finalPrice())
-                .currency(debitRequest.priceDetails().currency())
-                .status(ChargeStatus.COMPLETED)
-                .build();
-        generationChargeRepository.save(charge);
-        
-        log.info("Successfully debited user {} and recorded charge for content {}", userId, debitRequest.contentId());
+        if (debitRequest.metadata() != null && debitRequest.metadata().containsKey("contentId") && debitRequest.metadata().get("ContentType") != null) {
+            String contentId = debitRequest.metadata().get("contentId");
+            ContentType contentType = ContentType.valueOf(debitRequest.metadata().get("ContentType"));
+            // Create and save the generation charge record
+            GenerationCharge charge = GenerationCharge.builder()
+                    .userId(debitRequest.userId())
+                    .contentId(contentId)
+                    .contentType(contentType)
+                    .amount(amountToDebit)
+                    .currency(currency)
+                    .status(ChargeStatus.COMPLETED)
+                    .build();
+            generationChargeRepository.save(charge);
+            log.info("Successfully debited user {} and recorded charge for content {}", userId, contentId);
+        }
+
+        // For now, only content generation charges are recorded.
     }
 
     /**

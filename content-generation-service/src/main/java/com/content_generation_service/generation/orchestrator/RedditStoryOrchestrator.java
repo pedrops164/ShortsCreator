@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.ObjectProvider;
@@ -150,7 +149,15 @@ public class RedditStoryOrchestrator {
         log.info("Generating Reddit narration using provider: {}, voice: {}", ttsProvider.getProviderId(), voice);
 
         Mono<NarrationSegment> titleMono = ttsProvider.generate(title, voice, false);
-        Mono<NarrationSegment> descriptionMono = ttsProvider.generate(description, voice, true);
+        // Conditionally generate narration for the description
+        Mono<NarrationSegment> descriptionMono;
+        if (description != null && !description.trim().isEmpty()) {
+            descriptionMono = ttsProvider.generate(description, voice, true);
+        } else {
+            // Return a NarrationSegment for an empty description with zero duration
+            descriptionMono = Mono.just(new NarrationSegment(null, 0.0, List.of()));
+            log.info("Description is empty, skipping TTS generation.");
+        }
         
         List<Mono<NarrationSegment>> commentMonos = new ArrayList<>();
         if (comments.isArray()) {
@@ -170,7 +177,11 @@ public class RedditStoryOrchestrator {
                 // Build the full list of segments for combination
                 List<NarrationSegment> allSegments = new ArrayList<>();
                 allSegments.add(titleNarration);
-                allSegments.add(descriptionNarration);
+
+                // Conditionally add description narration
+                if (descriptionNarration.getAudioFilePath() != null) {
+                    allSegments.add(descriptionNarration);
+                }
                 allSegments.addAll(commentNarrations);
 
                 // Use the inherited method to combine audio and adjust timestamps

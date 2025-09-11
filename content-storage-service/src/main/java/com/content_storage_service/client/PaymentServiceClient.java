@@ -3,11 +3,9 @@ package com.content_storage_service.client;
 import com.content_storage_service.config.AppProperties;
 import com.content_storage_service.exception.InsufficientFundsClientException;
 import com.content_storage_service.exception.PaymentServiceInternalErrorException;
-import com.shortscreator.shared.dto.ContentPriceV1;
 import com.shortscreator.shared.dto.DebitRequestV1;
 import com.shortscreator.shared.dto.ErrorResponse;
 import com.shortscreator.shared.dto.RefundRequestV1;
-import com.shortscreator.shared.enums.ContentType;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -24,9 +22,7 @@ public class PaymentServiceClient {
         this.webClient = webClientBuilder.baseUrl(appProperties.getServices().getPaymentService().getUrl()).build();
     }
 
-    public Mono<Void> debitForGeneration(String userId, String contentId, ContentPriceV1 priceResponse, ContentType contentType) {
-        DebitRequestV1 debitRequest = new DebitRequestV1(userId, contentId, priceResponse, contentType);
-
+    public Mono<Void> debitBalance(DebitRequestV1 debitRequest) {
         return webClient.post()
                 .uri("/api/v1/balance/debit")
                 .bodyValue(debitRequest)

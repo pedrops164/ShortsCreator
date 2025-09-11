@@ -22,12 +22,12 @@ spring:
               # The URI points to the service name within the AWS VPC
               uri: ${APP_CSS_URL}
               predicates:
-                - Path=/api/v1/content/**, /api/v1/assets/**, /api/v1/presets/**
+                - Path=/api/v1/content/**, /api/v1/assets/**, /api/v1/presets/**, /api/v1/generate/**
               filters:
                 # Apply the User ID header filter only to authenticated paths
                 - name: AddUserIdHeader
                   args:
-                    onlyOnPaths: /api/v1/content/**
+                    onlyOnPaths: /api/v1/content/**, /api/v1/generate/**
 
             # Route to Notification Service (NS)
             - id: notification-service-route

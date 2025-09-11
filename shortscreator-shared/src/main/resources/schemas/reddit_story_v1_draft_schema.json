@@ -35,7 +35,8 @@
     },
     "postDescription": {
       "type": "string",
-      "description": "Description/body of the Reddit post."
+      "description": "Description/body of the Reddit post.",
+      "default": ""
     },
     "comments": {
       "type": "array",

@@ -2,7 +2,7 @@ package com.content_storage_service.repository;
 
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 
-import com.content_storage_service.dto.AssetType;
+import com.content_storage_service.enums.AssetType;
 import com.content_storage_service.model.Asset;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;

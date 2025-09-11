@@ -4,9 +4,8 @@ import com.payment_service.exception.InsufficientFundsException;
 import com.payment_service.exception.ResourceNotFoundException;
 import com.payment_service.model.UserBalance;
 import com.payment_service.repository.UserBalanceRepository;
-import com.shortscreator.shared.dto.ContentPriceV1;
+import com.shortscreator.shared.dto.ChargeReasonV1;
 import com.shortscreator.shared.dto.DebitRequestV1;
-import com.shortscreator.shared.enums.ContentType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -72,9 +72,10 @@ class BalanceServiceTest {
     void givenSufficientFunds_whenDebitUserBalance_thenSucceeds() {
         String userId = "user-123";
         long initialBalance = 1000L;
-        ContentPriceV1 price = new ContentPriceV1(400, "USD");
-        DebitRequestV1 request = new DebitRequestV1(userId, "content-1", price, ContentType.REDDIT_STORY);
-        
+        String idempotencyKey = UUID.randomUUID().toString();
+        Integer price = 400;
+        DebitRequestV1 request = new DebitRequestV1(userId, price, ChargeReasonV1.AI_TEXT_GENERATION, idempotencyKey, null);
+
         UserBalance userBalance = new UserBalance(userId);
         userBalance.setBalanceInCents(initialBalance);
 
@@ -82,15 +83,16 @@ class BalanceServiceTest {
 
         balanceService.debitUserBalance(request);
 
-        assertThat(userBalance.getBalanceInCents()).isEqualTo(initialBalance - price.finalPrice());
+        assertThat(userBalance.getBalanceInCents()).isEqualTo(initialBalance - price);
         verify(userBalanceRepository).save(userBalance);
     }
 
     @Test
     void givenUserNotFound_whenDebitUserBalance_thenThrowsResourceNotFoundException() {
         String userId = "non-existent-user";
-        ContentPriceV1 price = new ContentPriceV1(100, "USD");
-        DebitRequestV1 request = new DebitRequestV1(userId, "content-1", price, ContentType.REDDIT_STORY);
+        Integer price = 100;
+        String idempotencyKey = UUID.randomUUID().toString();
+        DebitRequestV1 request = new DebitRequestV1(userId, price, ChargeReasonV1.AI_TEXT_GENERATION, idempotencyKey, null);
 
         when(userBalanceRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
@@ -101,8 +103,9 @@ class BalanceServiceTest {
     @Test
     void givenCurrencyMismatch_whenDebitUserBalance_thenThrowsIllegalArgumentException() {
         String userId = "user-123";
-        ContentPriceV1 price = new ContentPriceV1(100, "EUR"); // Request in EUR
-        DebitRequestV1 request = new DebitRequestV1(userId, "content-1", price, ContentType.REDDIT_STORY);
+        Integer price = 100;
+        String idempotencyKey = UUID.randomUUID().toString();
+        DebitRequestV1 request = new DebitRequestV1(userId, price, ChargeReasonV1.AI_TEXT_GENERATION, idempotencyKey, null);
 
         UserBalance userBalance = new UserBalance(userId);
         userBalance.setCurrency("USD"); // Balance in USD
@@ -116,9 +119,10 @@ class BalanceServiceTest {
     @Test
     void givenInsufficientFunds_whenDebitUserBalance_thenThrowsInsufficientFundsException() {
         String userId = "user-123";
-        ContentPriceV1 price = new ContentPriceV1(5000, "USD");
-        DebitRequestV1 request = new DebitRequestV1(userId, "content-1", price, ContentType.REDDIT_STORY);
-
+        Integer price = 5000; // Requesting 5000 cents
+        String idempotencyKey = UUID.randomUUID().toString();
+        DebitRequestV1 request = new DebitRequestV1(userId, price, ChargeReasonV1.AI_TEXT_GENERATION, idempotencyKey, null);
+        
         UserBalance userBalance = new UserBalance(userId);
         userBalance.setBalanceInCents(4999L);
 

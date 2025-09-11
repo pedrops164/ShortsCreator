@@ -1,7 +1,7 @@
 package com.content_generation_service.generation.service.storage;
 
 import com.content_generation_service.generation.model.VideoMetadata;
-import com.content_generation_service.generation.service.visual.VideoMetadataService;
+import com.content_generation_service.generation.service.visual.MediaMetadataService;
 import com.shortscreator.shared.dto.GeneratedVideoDetailsV1;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,9 +21,9 @@ import java.util.UUID;
 public class LocalStorageService implements StorageService {
 
     private final Path localUploadPath;
-    private final VideoMetadataService videoMetadataService;
+    private final MediaMetadataService videoMetadataService;
 
-    public LocalStorageService(@Value("${app.storage.local.upload-dir}") String uploadDir, VideoMetadataService videoMetadataService) throws IOException {
+    public LocalStorageService(@Value("${app.storage.local.upload-dir}") String uploadDir, MediaMetadataService videoMetadataService) throws IOException {
         this.localUploadPath = Paths.get(uploadDir);
         this.videoMetadataService = videoMetadataService;
         Files.createDirectories(this.localUploadPath);
@@ -35,7 +35,7 @@ public class LocalStorageService implements StorageService {
             String fileName = templateId + "_" + contentId + "_" + UUID.randomUUID() + ".mp4";
             Path destinationPath = localUploadPath.resolve(fileName);
             // Get metadata BEFORE you clean up the local file
-            VideoMetadata metadata = videoMetadataService.getMetadata(localPath);
+            VideoMetadata metadata = videoMetadataService.getVideoMetadata(localPath);
 
             log.info("DEV MODE: Moving final video from [{}] to local storage [{}]", localPath, destinationPath);
             Files.move(localPath, destinationPath, StandardCopyOption.REPLACE_EXISTING);

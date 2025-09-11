@@ -4,6 +4,7 @@ import com.content_storage_service.model.Content;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.shortscreator.shared.dto.ContentPriceV1;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -11,8 +12,11 @@ public class PriceCalculationService {
 
     private static final String CURRENCY = "USD"; // Default currency
 
-    // Pricing model: 7 cents per 1000 characters.
-    private static final double CENTS_PER_THOUSAND_CHARS = 7.0;
+    @Value("${app.pricing.video-generation.base}")
+    private int basePriceCents;
+
+    @Value("${app.pricing.video-generation.per-1000-chars}")
+    private int centsPer1kCharacters;
 
     /**
      * Routes the content object to the correct pricing function based on its templateId.
@@ -75,10 +79,10 @@ public class PriceCalculationService {
         }
 
         // Calculate the price. The cast to double is important for precision before ceiling.
-        double price = ((double) totalChars / 1000.0) * CENTS_PER_THOUSAND_CHARS;
+        double price = ((double) totalChars / 1000.0) * centsPer1kCharacters;
 
         // Math.ceil() rounds up to the nearest whole number, fulfilling the "round up" requirement.
-        int finalPriceInCents = (int) Math.ceil(price);
+        int finalPriceInCents = basePriceCents + (int) Math.ceil(price);
         
         return buildPriceResponse(finalPriceInCents);
     }

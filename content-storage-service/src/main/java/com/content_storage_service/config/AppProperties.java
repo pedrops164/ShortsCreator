@@ -5,7 +5,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 
 @Component
 @ConfigurationProperties(prefix = "app")
@@ -49,5 +51,28 @@ public class AppProperties {
     public static class PaymentService {
         @NotEmpty
         private String url; // URL for the payment service, used by the CSS to manage user balances.
+    }
+
+    @Valid
+    @NotNull
+    private Openai openai = new Openai();
+    
+    @Data
+    public static class Openai {
+        @NotEmpty
+        private String apiKey;
+        @Valid
+        @NotNull
+        private LLM llm;
+    }
+
+    @Data
+    public static class LLM {
+        @NotEmpty
+        private String url; // Base URL for the OpenAI API
+        @NotEmpty
+        private String model; // e.g., "gpt-3.5-turbo"
+        private Double temperature;
+        private Integer maxTokens;
     }
 }

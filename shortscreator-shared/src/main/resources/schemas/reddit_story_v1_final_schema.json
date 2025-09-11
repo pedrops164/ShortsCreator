@@ -38,7 +38,7 @@
     "postDescription": {
       "type": "string",
       "description": "Description/body of the Reddit post.",
-      "minLength": 5
+      "default": ""
     },
     "comments": {
       "type": "array",
@@ -114,7 +114,6 @@
     "username",
     "subreddit",
     "postTitle",
-    "postDescription",
     "comments",
     "aspectRatio",
     "subtitles",

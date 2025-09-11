@@ -9,7 +9,9 @@ import com.shortscreator.shared.validation.TemplateValidator.ValidationException
 import com.shortscreator.shared.enums.ContentStatus;
 import com.content_storage_service.repository.ContentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.shortscreator.shared.dto.ChargeReasonV1;
 import com.shortscreator.shared.dto.ContentPriceV1;
+import com.shortscreator.shared.dto.DebitRequestV1;
 import com.shortscreator.shared.dto.GeneratedVideoDetailsV1;
 import com.shortscreator.shared.dto.GenerationRequestV1;
 import com.shortscreator.shared.dto.GenerationResultV1;
@@ -25,6 +27,8 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -197,7 +201,9 @@ public class ContentService {
             log.info("Calculated price for content [{}] is {} cents. Currency: {}", contentId, priceResponse.finalPrice(), priceResponse.currency());
 
             // Debit the User's Account
-            return paymentServiceClient.debitForGeneration(userId, contentId, priceResponse, content.getContentType())
+            Map<String, String> metadata = Map.of("contentId", contentId, "ContentType", content.getContentType().name());
+            DebitRequestV1 debitRequest = new DebitRequestV1(userId, priceResponse.finalPrice(), ChargeReasonV1.VIDEO_GENERATION, UUID.randomUUID().toString(), metadata);
+            return paymentServiceClient.debitBalance(debitRequest)
                     .then(Mono.just(content)); // Pass the 'content' object down the chain on success
         })
         .flatMap(content -> {

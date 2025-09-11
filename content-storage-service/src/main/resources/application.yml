@@ -33,6 +33,18 @@ app:
     payment-service:
       # URL for the payment service, used by the CSS to manage user balances.
       url: ${PAYMENT_SERVICE_URL}
+  openai:
+    api-key: ${OPENAI_API_KEY}
+    llm:
+      url: https://api.openai.com/v1/chat/completions
+      model: gpt-4
+      temperature: 0.7
+      max-tokens: 1024
+  pricing:
+    ai-text-generation-cost-usd: 1 # 1 cent
+    video-generation:
+      base: 5 # 5 cents
+      per-1000-chars: 7 # 7 cents per 1000 characters
 
 management:
   endpoints:

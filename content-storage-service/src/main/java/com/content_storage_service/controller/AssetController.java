@@ -2,7 +2,7 @@ package com.content_storage_service.controller;
 
 import org.springframework.web.bind.annotation.*;
 
-import com.content_storage_service.dto.AssetType;
+import com.content_storage_service.enums.AssetType;
 import com.content_storage_service.model.Asset;
 import com.content_storage_service.repository.AssetRepository;
 

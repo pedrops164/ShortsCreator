@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payment_service.exception.InsufficientFundsException;
 import com.payment_service.model.UserBalance;
 import com.payment_service.service.BalanceService;
+import com.shortscreator.shared.dto.ChargeReasonV1;
 import com.shortscreator.shared.dto.ContentPriceV1;
 import com.shortscreator.shared.dto.DebitRequestV1;
 import com.shortscreator.shared.enums.ContentType;
@@ -22,6 +23,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.UUID;
 
 @WebMvcTest(BalanceController.class)
 class BalanceControllerTest {
@@ -56,23 +59,27 @@ class BalanceControllerTest {
     @Test
     void givenValidDebitRequest_whenDebitBalance_thenReturnsOk() throws Exception {
         // Given
-        ContentPriceV1 priceDetails = new ContentPriceV1(1000, "USD");
-        DebitRequestV1 debitRequest = new DebitRequestV1(USER_ID, "content-1", priceDetails, ContentType.REDDIT_STORY);
+        String userId = "user-123";
+        Integer price = 1000;
+        String idempotencyKey = UUID.randomUUID().toString();
+        DebitRequestV1 request = new DebitRequestV1(userId, price, ChargeReasonV1.AI_TEXT_GENERATION, idempotencyKey, null);
         
         doNothing().when(balanceService).debitUserBalance(any(DebitRequestV1.class));
 
         // When & Then
         mockMvc.perform(post("/api/v1/balance/debit")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(debitRequest)))
+                .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk());
     }
     
     @Test
     void givenInsufficientFunds_whenDebitBalance_thenReturnsError() throws Exception {
         // Given
-        ContentPriceV1 priceDetails = new ContentPriceV1(1000, "USD");
-        DebitRequestV1 debitRequest = new DebitRequestV1(USER_ID, "content-1", priceDetails, ContentType.REDDIT_STORY);
+        Integer price = 1000;
+        String idempotencyKey = UUID.randomUUID().toString();
+        String userId = "user-123";
+        DebitRequestV1 debitRequest = new DebitRequestV1(userId, price, ChargeReasonV1.AI_TEXT_GENERATION, idempotencyKey, null);
         
         doThrow(new InsufficientFundsException("Not enough money"))
             .when(balanceService).debitUserBalance(any(DebitRequestV1.class));

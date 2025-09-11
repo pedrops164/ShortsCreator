@@ -225,12 +225,6 @@ export default function EditorPage() {
       
       <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
         <fieldset disabled={isReadOnly || isSaving} className="space-y-8">
-          {/* <EditorComponent
-            ref={editorRef}
-            initialData={draftData}
-            onDirtyChange={setIsDirty}
-            onPriceUpdate={setApproximatePrice} // Pass setter to editor
-          /> */}
           {renderEditor()}
         </fieldset>
       </main>

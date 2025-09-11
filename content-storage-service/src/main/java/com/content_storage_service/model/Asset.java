@@ -3,7 +3,7 @@ package com.content_storage_service.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import com.content_storage_service.dto.AssetType;
+import com.content_storage_service.enums.AssetType;
 
 import lombok.Data;
 

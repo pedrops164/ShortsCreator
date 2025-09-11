@@ -10,7 +10,7 @@ const contentTemplates = [
     id: 'reddit-story',
     title: 'Reddit Story',
     description: 'Turn any Reddit thread into a viral video with compelling narration and gameplay.',
-    videoSrc: 'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/Whats+something+someone+did+that+convinced+you+they+were+a+complete+psycopath%3F.mp4',
+    videoSrc: 'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/Whats+something+someone+did+that+convinced+you+they+were+a+complete+psycopath_compressed.mp4',
     createUrl: '/editor/create/reddit_story_v1',
     status: 'available',
   },
@@ -18,7 +18,7 @@ const contentTemplates = [
     id: 'character-explains',
     title: 'Character Explains',
     description: "An animated character breaks down complex topics in a simple, engaging way.",
-    videoSrc: 'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/How+is+AI+trained%3F.mp4',
+    videoSrc: 'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/How+is+AI+trained_compressed.mp4',
     createUrl: '/editor/create/character_explains_v1',
     status: 'available',
   },
@@ -26,7 +26,7 @@ const contentTemplates = [
     id: 'coming-soon-1',
     title: 'AI News Anchor',
     description: 'Generate daily news shorts with a realistic AI news anchor delivering the script.',
-    videoSrc: 'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/Whats+something+someone+did+that+convinced+you+they+were+a+complete+psycopath%3F.mp4', // Placeholder video
+    videoSrc: 'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/Whats+something+someone+did+that+convinced+you+they+were+a+complete+psycopath_compressed.mp4', // Placeholder video
     createUrl: '#',
     status: 'coming-soon',
   },

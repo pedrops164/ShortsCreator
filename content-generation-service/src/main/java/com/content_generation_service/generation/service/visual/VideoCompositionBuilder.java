@@ -10,12 +10,15 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+
+import com.content_generation_service.generation.model.VideoMetadata;
 
 /**
  * A builder for creating and executing complex FFmpeg video compositions.
@@ -31,6 +34,11 @@ public class VideoCompositionBuilder {
     private final List<Path> tempFilesToClean = new ArrayList<>();
     private final List<String> outputOptions = new ArrayList<>();
     private final List<String> inputOptions = new ArrayList<>();
+    private final MediaMetadataService videoMetadataService = new MediaMetadataService(new com.fasterxml.jackson.databind.ObjectMapper());
+
+    // Store paths for duration calculation
+    private Path backgroundVideoPath = null;
+    private Path narrationAudioPath = null;
     
     private String lastVideoStreamTag = "[0:v]";
     private Integer narrationInputIndex = null;
@@ -69,8 +77,9 @@ public class VideoCompositionBuilder {
     }
 
     public VideoCompositionBuilder withBackground(Path videoPath) {
+        this.backgroundVideoPath = videoPath;
         this.inputs.add(videoPath);
-        String filter = String.format(Locale.US, "[0:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1[bg]",
+        String filter = String.format(Locale.US, "[0:v]setpts=PTS-STARTPTS,scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1[bg]",
                 width, height, width, height);
         this.filterComplexParts.add(filter);
         this.lastVideoStreamTag = "[bg]";
@@ -78,62 +87,9 @@ public class VideoCompositionBuilder {
     }
 
     public VideoCompositionBuilder withNarration(Path audioPath) {
+        this.narrationAudioPath = audioPath;
         this.narrationInputIndex = this.inputs.size();
         this.inputs.add(audioPath);
-        return this;
-    }
-
-    /**
-     * Overlays an image on top of the current video stream.
-     * @param imagePath The path to the image to overlay.
-     * @param durationSeconds The duration the overlay should be visible.
-     * @param scaleToFit If true, scales the image to fit the video width. If false, uses the image's original size.
-     * @return This builder instance for chaining.
-     */
-    public VideoCompositionBuilder withOverlay(Path imagePath, double durationSeconds, boolean scaleToFit) {
-        int imageInputIndex = this.inputs.size();
-        
-        if (filterComplexParts.isEmpty() && this.inputs.isEmpty()) {
-            log.info("No background set. Treating first image as the base video layer.");
-            this.inputOptions.add("-loop");
-            this.inputOptions.add("1");
-            this.inputs.add(imagePath);
-            
-            String imageStreamTag = "[0:v]";
-            String finalTag = "[base_img0]";
-            String baseFilter;
-
-            if (scaleToFit) {
-                baseFilter = String.format(Locale.US, "%sscale=1080:-2,setsar=1%s", imageStreamTag, finalTag);
-            } else {
-                baseFilter = String.format(Locale.US, "%ssetsar=1%s", imageStreamTag, finalTag);
-            }
-            this.filterComplexParts.add(baseFilter);
-            this.lastVideoStreamTag = finalTag;
-        } else {
-            this.inputs.add(imagePath);
-            String imageStreamTag = "[" + imageInputIndex + ":v]";
-            String streamToOverlayTag = imageStreamTag; // Default to original image stream
-
-            String currentVideoTag = this.lastVideoStreamTag;
-            String overlayTag = "[ovr" + imageInputIndex + "]";
-            
-            if (scaleToFit) {
-                log.debug("Scaling overlay image to fit video width.");
-                String scaledImageTag = "[scaled_img" + imageInputIndex + "]";
-                String scaleFilter = String.format(Locale.US, "%sscale=1080:-1%s", imageStreamTag, scaledImageTag);
-                this.filterComplexParts.add(scaleFilter);
-                streamToOverlayTag = scaledImageTag; // Use the newly scaled stream for the overlay
-            } else {
-                log.debug("Using original size for overlay image.");
-            }
-            
-            String overlayFilter = String.format(Locale.US, "%s%soverlay=(W-w)/2:(H-h)/2:enable='between(t,0,%.2f)'%s",
-                    currentVideoTag, streamToOverlayTag, durationSeconds, overlayTag);
-
-            this.filterComplexParts.add(overlayFilter);
-            this.lastVideoStreamTag = overlayTag;
-        }
         return this;
     }
 
@@ -261,8 +217,41 @@ public class VideoCompositionBuilder {
         // Add global input options
         command.addAll(this.inputOptions);
 
+        // Randomization Logic
+        double backgroundStartTime = 0.0;
+        if (this.backgroundVideoPath != null && this.narrationAudioPath != null) {
+            VideoMetadata backgroundMetadata = videoMetadataService.getVideoMetadata(this.backgroundVideoPath);
+            double backgroundDuration = backgroundMetadata.duration();
+
+            double narrationDuration = videoMetadataService.getAudioDuration(this.narrationAudioPath);
+
+
+            if (backgroundDuration > 0 && narrationDuration > 0) {
+                double maxStartTime = backgroundDuration - narrationDuration;
+                if (maxStartTime > 0) {
+                    backgroundStartTime = new Random().nextDouble() * maxStartTime;
+                    log.debug("Randomizing background start. Max possible start time: {:.2f}s. Chosen start time: {:.2f}s", maxStartTime, backgroundStartTime);
+                } else {
+                    log.warn("Narration duration ({:.2f}s) is longer than or equal to background duration ({:.2f}s). Starting background from the beginning.", narrationDuration, backgroundDuration);
+                }
+            }
+        }
+        
+        // Command construction to handle randomized start time
+        // Add background video input with the -ss (seek) option
+        if (this.backgroundVideoPath != null) {
+            command.add("-ss");
+            command.add(String.format(Locale.US, "%.3f", backgroundStartTime));
+            command.add("-i");
+            command.add(this.backgroundVideoPath.toAbsolutePath().toString());
+        }
+
         // Add all file-based inputs
         for (Path input : this.inputs) {
+            // Skip the background path since we already added it
+            if (input.equals(this.backgroundVideoPath)) {
+                continue;
+            }
             command.add("-i");
             command.add(input.toAbsolutePath().toString());
         }
@@ -304,7 +293,7 @@ public class VideoCompositionBuilder {
         command.add("-shortest"); // Ensure output duration matches shortest stream (video or audio)
         command.add(finalVideoPath.toAbsolutePath().toString());
 
-        log.info("Executing FFmpeg command: {}", String.join(" ", command));
+        log.debug("Executing FFmpeg command: {}", String.join(" ", command));
 
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         Process process = processBuilder.start();
@@ -340,7 +329,7 @@ public class VideoCompositionBuilder {
             throw new IOException("FFmpeg process exited with code " + exitCode + ". Full error output:\n" + errorOutput);
         }
 
-        log.info("FFmpeg successfully composed final video at: {}", finalVideoPath);
+        log.debug("FFmpeg successfully composed final video at: {}", finalVideoPath);
         cleanupTempFiles();
         return finalVideoPath;
     }

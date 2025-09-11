@@ -1,7 +1,7 @@
 package com.content_generation_service.generation.service.storage;
 
 import com.content_generation_service.generation.model.VideoMetadata;
-import com.content_generation_service.generation.service.visual.VideoMetadataService;
+import com.content_generation_service.generation.service.visual.MediaMetadataService;
 import com.shortscreator.shared.dto.GeneratedVideoDetailsV1;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ import java.util.UUID;
 public class S3StorageService implements StorageService {
 
     private final S3Client s3Client;
-    private final VideoMetadataService videoMetadataService;
+    private final MediaMetadataService videoMetadataService;
     
     @Value("${app.aws.s3.bucket-name}")
     private String bucketName;
@@ -32,7 +32,7 @@ public class S3StorageService implements StorageService {
     public GeneratedVideoDetailsV1 storeFinalVideo(Path localPath, String templateId, String contentId, String userId) {
         String destinationKey = String.format("%s/%s/%s.mp4", templateId, contentId, UUID.randomUUID());
         // Get metadata BEFORE you clean up the local file
-        VideoMetadata metadata = videoMetadataService.getMetadata(localPath);
+        VideoMetadata metadata = videoMetadataService.getVideoMetadata(localPath);
 
         // Upload the file to S3
         log.debug("Uploading file [{}] to S3 at s3://{}/{}", localPath.getFileName(), bucketName, destinationKey);

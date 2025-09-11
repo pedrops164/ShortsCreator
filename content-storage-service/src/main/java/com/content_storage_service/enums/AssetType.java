@@ -1,4 +1,4 @@
-package com.content_storage_service.dto;
+package com.content_storage_service.enums;
 
 public enum AssetType {
     VIDEO,
