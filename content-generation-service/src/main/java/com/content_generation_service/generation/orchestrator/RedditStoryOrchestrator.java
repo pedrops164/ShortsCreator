@@ -64,30 +64,28 @@ public class RedditStoryOrchestrator {
     
     // This is the main business logic flow
     public GeneratedVideoDetailsV1 generate(JsonNode params, String contentId, String userId) {
-        log.info("Starting Reddit Story generation...");
+        log.debug("Starting Reddit Story generation...");
 
         // Create a scoped listener for this specific content generation
         ProgressListener scopedProgressListener = videoStatusUpdateDispatcher.forContent(userId, contentId);
-
         // Ensure the shared directory exists before we start
         Path sharedOutputPath = Paths.get(sharedTempBasePath);
+
+        // Declare variables outside the try block
+        RedditNarration narration = null;
+        Path titleImage = null;
+        Path subtitleFile = null;
+        
         try {
             Files.createDirectories(sharedOutputPath);
-        } catch (IOException e) {
-            log.error("Cannot create shared temporary directory at: {}", sharedOutputPath, e);
-            throw new RuntimeException("Failed to initialize shared storage", e);
-        }
-        
-        Path finalVideoPath;
-        try {
             // Get narration from TTS API
-            RedditNarration narration = generateNarration(params.get("postTitle").asText(), params.get("postDescription").asText(), params.get("comments"), params.get("voiceSelection").asText());
-            
+            narration = generateNarration(params.get("postTitle").asText(), params.get("postDescription").asText(), params.get("comments"), params.get("voiceSelection").asText());
+
             // Get background video
             Path backgroundVideo = videoAssetService.getBackgroundVideo(params.get("backgroundVideoId").asText());
 
             // Create image for post title
-            Path titleImage = redditImageService.createRedditPostImage(params);
+            titleImage = redditImageService.createRedditPostImage(params);
 
             // Generate subtitles from the audio timings
             JsonNode subtitles = params.get("subtitles");
@@ -95,7 +93,7 @@ public class RedditStoryOrchestrator {
             //String font = "Montserrat ExtraBold"; // test
             String color = subtitles.get("color").asText("#FFFFFF");
             String position = subtitles.get("position").asText("bottom");
-            Path subtitleFile = subtitleService.createAssFile(narration.getWordTimings(), font, color, position);
+            subtitleFile = subtitleService.createAssFile(narration.getWordTimings(), font, color, position);
             // Use the AssetProvider to get the path to the FONTS directory
             Path fontDirPath = assetProvider.getAssetDir(appProperties.getAssets().getFonts());
 
@@ -104,26 +102,37 @@ public class RedditStoryOrchestrator {
             int videoHeight = appProperties.getVideo().getHeight();
             // Combine everything into a final video composition
             VideoCompositionBuilder compositionBuilder = videoCompositionBuilderProvider.getObject();
-            finalVideoPath = compositionBuilder
+            Path finalVideoPath = compositionBuilder
                 .withDimensions(videoWidth, videoHeight)
                 .withBackground(backgroundVideo) // Assuming 9:16 aspect ratio
                 .withNarration(narration.getAudioFilePath())
                 .withCenteredOverlay(titleImage, 0, narration.getTitleDurationSeconds(), false)
                 .withSubtitles(fontDirPath, subtitleFile)
-                .withOutputDuration(narration.getDurationSeconds())
                 .withProgressListener(scopedProgressListener) // Pass the scoped listener
                 .buildAndExecute(sharedOutputPath);
+
+            GeneratedVideoDetailsV1 videoDetails = storageService.storeFinalVideo(finalVideoPath, REDDIT_STORY_TEMPLATE_ID, contentId, userId);
+            scopedProgressListener.onComplete(); // Notify the listener of success
+            return videoDetails;
         } catch (Exception e) {
             log.error("Video composition failed for contentId: {}", contentId, e);
             scopedProgressListener.onError(); // Notify the listener of failure
             throw new RuntimeException("Failed to compose final video", e);
+        } finally {
+            log.debug("Executing cleanup block for contentId: {}", contentId);
+            // null-checks before attempting cleanup
+            try {
+                if (titleImage != null) Files.deleteIfExists(titleImage);
+                if (subtitleFile != null) Files.deleteIfExists(subtitleFile);
+                if (narration != null && narration.getAudioFilePath() != null) {
+                    Files.deleteIfExists(narration.getAudioFilePath());
+                }
+            } catch (IOException e) {
+                // Log cleanup errors but don't re-throw, as an exception might already be in flight
+                log.error("Error during resource cleanup for contentId: {}", contentId, e);
+            }
         }
-
-        GeneratedVideoDetailsV1 videoDetails = storageService.storeFinalVideo(finalVideoPath, REDDIT_STORY_TEMPLATE_ID, contentId, userId);
-        scopedProgressListener.onComplete(); // Notify the listener of success
-        return videoDetails;
     }
-
 
     /**
      * Generates separate narration for title, description, and comments, then combines them.

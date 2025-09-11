@@ -85,8 +85,8 @@ public class SubtitleService {
                 text = text.toUpperCase();
             }
 
-            int fadeInMs = 50; // Example fade-in duration
-            int fadeOutMs = 50; // Example fade-out duration
+            int fadeInMs = 20; // Example fade-in duration
+            int fadeOutMs = 20; // Example fade-out duration
             
             // Prepend the fade effect tag to the text
             String effectTag = String.format("{\\fad(%d,%d)}", fadeInMs, fadeOutMs);

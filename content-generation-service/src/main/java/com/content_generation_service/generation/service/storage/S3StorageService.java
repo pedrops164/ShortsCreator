@@ -35,7 +35,7 @@ public class S3StorageService implements StorageService {
         VideoMetadata metadata = videoMetadataService.getMetadata(localPath);
 
         // Upload the file to S3
-        log.info("Uploading file [{}] to S3 at s3://{}/{}", localPath.getFileName(), bucketName, destinationKey);
+        log.debug("Uploading file [{}] to S3 at s3://{}/{}", localPath.getFileName(), bucketName, destinationKey);
         String s3Url;
         try {
             PutObjectRequest request = PutObjectRequest.builder()
@@ -45,31 +45,31 @@ public class S3StorageService implements StorageService {
 
             s3Client.putObject(request, localPath);
             s3Url = s3Client.utilities().getUrl(b -> b.bucket(bucketName).key(destinationKey)).toExternalForm();
-            log.info("Successfully uploaded file to {}", s3Url);
+            log.debug("Successfully uploaded file to {}", s3Url);
+
+            // Return the complete details
+            return new GeneratedVideoDetailsV1(
+                s3Url,
+                destinationKey,
+                metadata.duration(),
+                metadata.width(),
+                metadata.height()
+            );
 
         } catch (Exception e) {
             log.error("Failed to upload file {} to S3", localPath, e);
             throw new RuntimeException("S3 upload failed", e);
+        } finally {
+            // Ensure we always attempt to clean up the local file
+            cleanupLocalFile(localPath);
         }
-
-        // Clean up the local file from EFS
-        cleanupLocalFile(localPath);
-
-        // Return the complete details
-        return new GeneratedVideoDetailsV1(
-            s3Url,
-            destinationKey,
-            metadata.duration(),
-            metadata.width(),
-            metadata.height()
-        );
     }
 
     @Override
     public void cleanupLocalFile(Path localPath) {
         try {
             Files.deleteIfExists(localPath);
-            log.info("Successfully cleaned up local file: {}", localPath);
+            log.debug("Successfully cleaned up local file: {}", localPath);
         } catch (IOException e) {
             log.error("Failed to clean up local file: {}", localPath, e);
         }

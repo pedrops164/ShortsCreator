@@ -67,6 +67,8 @@ public class SpeechifyVoiceCloningProvider implements TextToSpeechProvider {
      * @return A Mono emitting the NarrationSegment output of generating the audio.
      */
     private Mono<NarrationSegment> createNarrationSegment(String text, String speechifyVoiceId) {
+
+        text = "<speak><prosody rate=\"25%\">" + text + "</prosody></speak>";
         Map<String, Object> requestBody = Map.of(
             "input", text,
             "voice_id", speechifyVoiceId,

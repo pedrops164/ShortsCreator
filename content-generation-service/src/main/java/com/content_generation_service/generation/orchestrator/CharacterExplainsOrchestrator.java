@@ -14,7 +14,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.UUID;
 import java.awt.Dimension;
 
 import org.springframework.beans.factory.ObjectProvider;
@@ -77,10 +76,12 @@ public class CharacterExplainsOrchestrator {
             throw new RuntimeException("Failed to initialize shared storage", e);
         }
         
-        Path finalVideoPath;
+        // Declare variables outside the try block
+        CharacterNarration narration = null;
+        Path subtitleFile = null;
         try {
             // Get character narration from the voice clone tts provider
-            CharacterNarration narration = generateNarration(params.get("dialogue"));
+            narration = generateNarration(params.get("dialogue"));
 
             // Get background video
             Path backgroundVideo = videoAssetService.getBackgroundVideo(params.get("backgroundVideoId").asText());
@@ -106,7 +107,7 @@ public class CharacterExplainsOrchestrator {
             String color = subtitles.get("color").asText("#FFFFFF");
             String position = subtitles.get("position").asText("bottom");
             // Generate subtitles from the audio timings
-            Path subtitleFile = subtitleService.createAssFile(narration.getWordTimings(), font, color, position);
+            subtitleFile = subtitleService.createAssFile(narration.getWordTimings(), font, color, position);
             // Use the AssetProvider to get the path to the FONTS directory
             Path fontDirPath = assetProvider.getAssetDir(appProperties.getAssets().getFonts());
 
@@ -118,7 +119,6 @@ public class CharacterExplainsOrchestrator {
                 .withDimensions(videoWidth, videoHeight)
                 .withBackground(backgroundVideo)
                 .withNarration(narration.getAudioFilePath())
-                .withOutputDuration(narration.getDurationSeconds())
                 .withProgressListener(scopedProgressListener);
 
             // Determine character order dynamically
@@ -153,18 +153,30 @@ public class CharacterExplainsOrchestrator {
                 );
             }
 
-            finalVideoPath = compositionBuilder
+            Path finalVideoPath = compositionBuilder
                 .withSubtitles(fontDirPath, subtitleFile) // Add subtitles to the composition only after the image overlays
                 .buildAndExecute(sharedOutputPath);
+
+            GeneratedVideoDetailsV1 videoDetails = storageService.storeFinalVideo(finalVideoPath, CHARACTER_EXPLAINS_TEMPLATE_ID, contentId, userId);
+            scopedProgressListener.onComplete(); // Notify the listener of success
+            return videoDetails;
         } catch (Exception e) {
             log.error("Video composition failed for contentId: {}", contentId, e);
             scopedProgressListener.onError(); // Notify the listener of failure
             throw new RuntimeException("Failed to compose final video", e);
+        } finally {
+            log.debug("Executing cleanup block for contentId: {}", contentId);
+            // null-checks before attempting cleanup
+            try {
+                if (subtitleFile != null) Files.deleteIfExists(subtitleFile);
+                if (narration != null && narration.getAudioFilePath() != null) {
+                    Files.deleteIfExists(narration.getAudioFilePath());
+                }
+            } catch (IOException e) {
+                // Log cleanup errors but don't re-throw, as an exception might already be in flight
+                log.error("Error during resource cleanup for contentId: {}", contentId, e);
+            }
         }
-
-        GeneratedVideoDetailsV1 videoDetails = storageService.storeFinalVideo(finalVideoPath, CHARACTER_EXPLAINS_TEMPLATE_ID, contentId, userId);
-        scopedProgressListener.onComplete(); // Notify the listener of success
-        return videoDetails;
     }
 
     /**
