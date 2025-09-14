@@ -253,6 +253,54 @@ public class VideoCompositionBuilder {
         return this;
     }
 
+    /**
+     * Adds a semi-transparent text watermark to the video in the bottom-left corner.
+     * This should be called after other overlays but before subtitles for correct layering.
+     *
+     * @param text The string of text to display.
+     * @param fontPath Path to the .ttf font file.
+     * @param fontSize The size of the font.
+     * @param fontColor The color of the font (e.g., "white", "black").
+     * @param opacity The opacity from 0.0 (transparent) to 1.0 (opaque).
+     * @return The builder instance for chaining.
+     */
+    public VideoCompositionBuilder withTextWatermark() {
+        String text = "madshorts.com";
+        int fontSize = 30;
+        String fontColor = "red";
+        double opacity = 0.75;
+
+        String currentVideoTag = this.lastVideoStreamTag;
+        String finalVideoStream = "[v_with_wm]";
+
+        // The 'text' parameter also needs to be escaped to handle special characters.
+        String escapedText = text.replace("'", "'\\''");
+
+        // Construct the drawtext filter.
+        // x=PADDING: Position from the left edge.
+        // y=main_h-text_h-PADDING: Position from the bottom edge (main height - text height - padding).
+        // fontcolor=%s@%.2f: Sets the color and opacity (e.g., white@0.7).
+        String drawtextFilter = String.format(Locale.US,
+            "%sdrawtext=text='%s':fontsize=%d:fontcolor=%s@%.2f:x=%d:y=main_h-text_h-%d%s",
+            currentVideoTag,
+            escapedText,
+            fontSize,
+            fontColor,
+            opacity,
+            PADDING,
+            PADDING,
+            finalVideoStream
+        );
+
+        this.filterComplexParts.add(drawtextFilter);
+
+        // Update the last video stream tag so the next filter (e.g., subtitles)
+        // is applied on top of the video that now includes the watermark.
+        this.lastVideoStreamTag = finalVideoStream;
+
+        return this;
+    }
+
     public VideoCompositionBuilder withSubtitles(Path fontDirsPath, Path subtitleFilePath) {
         if (filterComplexParts.isEmpty()) {
             throw new IllegalStateException("Subtitles can only be added after a video stream has been defined.");

@@ -266,6 +266,8 @@ public class CharacterExplainsOrchestrator {
             );
         }
 
+        builder.withTextWatermark();
+
         // Add subtitles last so they are on top
         Path fontDirPath = assetProvider.getAssetDir(appProperties.getAssets().getFonts());
         builder.withSubtitles(fontDirPath, subtitleFile);

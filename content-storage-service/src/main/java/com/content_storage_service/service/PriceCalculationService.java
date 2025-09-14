@@ -85,7 +85,7 @@ public class PriceCalculationService {
         double price = ((double) totalChars / 1000.0) * centsPer1kCharacters;
 
         // Math.ceil() rounds up to the nearest whole number, fulfilling the "round up" requirement.
-        int finalPriceInCents = basePriceCents + (int) Math.ceil(price);
+        int finalPriceInCents = (int) Math.ceil(price);
         return finalPriceInCents;
     }
 
