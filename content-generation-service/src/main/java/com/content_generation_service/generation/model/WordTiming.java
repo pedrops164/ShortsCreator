@@ -10,8 +10,12 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class WordTiming {
+public class WordTiming extends TimeRange {
     private String word;
-    private double startTimeSeconds;
-    private double endTimeSeconds;
+
+    // Custom constructor with the desired parameter order
+    public WordTiming(String word, double startTimeSeconds, double endTimeSeconds) {
+        super(startTimeSeconds, endTimeSeconds); // Call the parent class constructor
+        this.word = word;
+    }
 }

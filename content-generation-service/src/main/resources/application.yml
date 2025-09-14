@@ -28,9 +28,6 @@ app:
       # CGS needs to know the routing key for status updates
       content-status: "content.status"
   tts:
-    openai:
-      # Load the secret API key from an environment variable.
-      api-key: ${OPENAI_API_KEY}
     elevenlabs:
       # Load the secret API key from an environment variable.
       api-key: ${ELEVENLABS_API_KEY}
@@ -62,6 +59,16 @@ app:
     images: "images/"
     fonts: "fonts/"
     base-path: ${ASSETS_FOLDER_PATH}
+  openai:
+    api-key: ${OPENAI_API_KEY}
+    llm:
+      url: https://api.openai.com/v1/chat/completions
+      model: gpt-4
+      temperature: 0.5
+      max-tokens: 1024
+  google:
+    api-key: ${GOOGLE_API_KEY}
+    cse-id: ${GOOGLE_CSE_ID}
 
 management:
   endpoints:

@@ -49,8 +49,9 @@ public class PriceCalculationService {
                 totalChars += commentNode.path("text").asText("").length();
             }
         }
-        
-        return calculatePriceFromChars(totalChars);
+        int charactersPrice = calculatePriceFromChars(totalChars);
+        int finalPriceInCents = basePriceCents + charactersPrice;
+        return buildPriceResponse(finalPriceInCents);
     }
 
     /**
@@ -59,23 +60,25 @@ public class PriceCalculationService {
      */
     private ContentPriceV1 calculateCharacterExplainsPrice(JsonNode params) {
         int totalChars = 0;
-
+        
+        int imageGenPrice = params.path("generateImages").asBoolean(false) ? 10 : 0; // Image generation costs 10 cents flat
         if (params.path("dialogue").isArray()) {
             for (JsonNode dialogNode : params.path("dialogue")) {
                 totalChars += dialogNode.path("text").asText("").length();
             }
         }
-        
-        return calculatePriceFromChars(totalChars);
+        int charactersPrice = calculatePriceFromChars(totalChars);
+        int finalPriceInCents = basePriceCents + charactersPrice + imageGenPrice;
+        return buildPriceResponse(finalPriceInCents);
     }
     
     /**
      * Core calculation based on total characters.
      * Price is 7 cents per 1000 characters, rounded up.
      */
-    private ContentPriceV1 calculatePriceFromChars(int totalChars) {
+    private int calculatePriceFromChars(int totalChars) {
         if (totalChars == 0) {
-            return buildPriceResponse(0);
+            return 0;
         }
 
         // Calculate the price. The cast to double is important for precision before ceiling.
@@ -83,8 +86,7 @@ public class PriceCalculationService {
 
         // Math.ceil() rounds up to the nearest whole number, fulfilling the "round up" requirement.
         int finalPriceInCents = basePriceCents + (int) Math.ceil(price);
-        
-        return buildPriceResponse(finalPriceInCents);
+        return finalPriceInCents;
     }
 
     /**

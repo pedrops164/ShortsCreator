@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import com.content_generation_service.generation.model.ImagePosition;
 import com.content_generation_service.generation.model.VideoMetadata;
 
 /**
@@ -46,6 +47,8 @@ public class VideoCompositionBuilder {
 
     private int height;
     private int width;
+
+    private static final int PADDING = 50; // Padding in pixels for positioned overlays
 
     // Progress listener
     private ProgressListener progressListener;
@@ -91,6 +94,90 @@ public class VideoCompositionBuilder {
         this.narrationInputIndex = this.inputs.size();
         this.inputs.add(audioPath);
         return this;
+    }
+
+    /**
+     * The primary, recommended method for adding an image overlay.
+     * It uses an ImagePosition enum to automatically handle scaling and placement.
+     * The image is scaled down to fit its designated area while preserving aspect ratio.
+     *
+     * @param imagePath     Path to the image file.
+     * @param position      The desired position from the ImagePosition enum.
+     * @param startTime     The time in seconds when the overlay should appear.
+     * @param duration      The duration in seconds the overlay should be visible.
+     */
+    public VideoCompositionBuilder withImageOverlay(Path imagePath, ImagePosition position, double startTime, double duration) {
+        int imageInputIndex = this.inputs.size();
+        this.inputs.add(imagePath);
+
+        String imageInputStream = "[" + imageInputIndex + ":v]";
+        String scaledImageStream = "[scaled" + imageInputIndex + "]";
+        
+        String scaleFilter = buildScaleFilter(imageInputStream, scaledImageStream, position);
+        this.filterComplexParts.add(scaleFilter);
+
+        String overlayFilter = buildOverlayFilter(scaledImageStream, position, startTime, duration);
+        this.filterComplexParts.add(overlayFilter);
+
+        return this;
+    }
+
+    private String buildScaleFilter(String inputStream, String outputStream, ImagePosition position) {
+        // 'force_original_aspect_ratio=decrease' is key. It fits the image within the
+        // target width/height (w/h) box, scaling it down if needed, without distortion.
+        String scaleParams;
+        switch (position) {
+            case TOP_HALF:
+            case BOTTOM_HALF:
+                // Box is video width (minus padding) by half video height (minus padding).
+                int targetW = this.width - (2 * PADDING);
+                int targetH = (this.height / 2) - (2 * PADDING);
+                scaleParams = String.format(Locale.US, "scale=%d:%d:force_original_aspect_ratio=decrease", targetW, targetH);
+                break;
+            case CENTER:
+            default:
+                // For centering, we'll scale to 80% of the video width.
+                targetW = (int) (this.width * 0.8);
+                scaleParams = String.format(Locale.US, "scale=%d:-1", targetW); // -1 preserves aspect ratio
+                break;
+        }
+        return String.format(Locale.US, "%s%s%s", inputStream, scaleParams, outputStream);
+    }
+    
+    private String buildOverlayFilter(String imageStream, ImagePosition position, double startTime, double duration) {
+        String x, y;
+        switch (position) {
+            case TOP_HALF:
+                // x: Horizontally center the image -> (VideoWidth - ImageWidth) / 2
+                x = "(main_w-overlay_w)/2";
+                // y: Center the image within the top padded box.
+                // Box starts at y=PADDING. Box height is (H/2 - 2*PADDING).
+                // Formula: (BoxHeight - ImageHeight)/2 + BoxYOffset
+                y = String.format(Locale.US, "((main_h/2-%d)-overlay_h)/2 + %d", (2 * PADDING), PADDING);
+                break;
+            case BOTTOM_HALF:
+                x = "(main_w-overlay_w)/2";
+                // y: Center the image within the bottom padded box.
+                // Box starts at y=H/2. Box height is (H/2 - PADDING).
+                // Formula: (BoxHeight - ImageHeight)/2 + BoxYOffset
+                y = String.format(Locale.US, "((main_h/2-%d)-overlay_h)/2 + main_h/2", PADDING);
+                break;
+            case CENTER:
+            default:
+                x = "(main_w-overlay_w)/2";
+                y = "(main_h-overlay_h)/2";
+                break;
+        }
+        
+        String currentVideoTag = this.lastVideoStreamTag;
+        String overlayTag = "[ovr" + System.currentTimeMillis() + "]";
+        double endTime = startTime + duration;
+
+        String overlayFilter = String.format(Locale.US, "%s%soverlay=%s:%s:enable='between(t,%.2f,%.2f)'%s",
+            currentVideoTag, imageStream, x, y, startTime, endTime, overlayTag);
+        
+        this.lastVideoStreamTag = overlayTag; // Update the last stream tag
+        return overlayFilter;
     }
 
     /**

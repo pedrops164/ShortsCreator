@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -37,6 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+// Assuming you have shadcn/ui or similar components
 import { GenerateTextRequest, GeneratedContentResponse } from '@/types/api';
 import { toast } from 'sonner';
 
@@ -57,6 +59,7 @@ interface EditorProps {
 
 // --- Default values for a new draft ---
 const defaultParams: CharacterExplainsParams = {
+  generateImages: false,
   characterPresetId: undefined,
   topicTitle: '',
   dialogue: [],
@@ -118,7 +121,10 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
   
   useEffect(() => {
     const totalChars = params.dialogue?.reduce((sum, entry) => sum + (entry.text?.length || 0), 0) || 0;
-    const priceInCents = 5 + calculateApproximatePrice(totalChars);
+    const basePriceInCents = 5; // Base price for the video
+    const imageGenCost = params.generateImages ? 10 : 0; // Image generation costs 10 cents flat
+    // Calculate price: base + (per character cost) + (image generation if selected)
+    const priceInCents = basePriceInCents + calculateApproximatePrice(totalChars) + imageGenCost;
     onPriceUpdate(priceInCents);
   }, [params, onPriceUpdate]);
 
@@ -281,6 +287,14 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
     }
   };
 
+  // Handler to update the state when the switch is toggled
+  const handleImageGenerationChange = (isChecked: boolean) => {
+    setParams(prevData => ({
+      ...prevData,
+      generateImages: isChecked,
+    }));
+  };
+
   // Function to trigger the confirmation dialog
   const requestConfirmation = (action: () => void) => {
     setOnConfirmAction(() => action);
@@ -376,12 +390,34 @@ export const CharacterExplainsEditor = forwardRef<EditorHandle, EditorProps>(
                     </div>
                     {errors.characterPresetId && <p className="text-sm text-destructive mt-2">{errors.characterPresetId}</p>}
                   </div>
+
+                  {/* Topic Title Section */}
                   <div className="space-y-2">
                     <Label htmlFor="topic-title" className="font-semibold">Topic Title *</Label>
                     <Input id="topic-title" placeholder="e.g., Why Pineapple on Pizza is Great"
                       value={params.topicTitle} onChange={(e) => handleFormChange('topicTitle', e.target.value)}
                       className={errors.topicTitle ? 'border-destructive' : ''} />
                     {errors.topicTitle && <p className="text-sm text-destructive">{errors.topicTitle}</p>}
+                  </div>
+
+                  {/* Automatic Image Generation Section */}
+                  <div className="border-t pt-6">
+                    <div className="flex items-center justify-between space-x-4">
+                      <div className="flex-grow">
+                        <Label htmlFor="generate-images" className="text-lg font-semibold">
+                          Automatic Images 🤖
+                        </Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Automatically search and add relevant images to the video based on the dialogue.
+                        </p>
+                      </div>
+                      <Switch
+                        id="generate-images"
+                        checked={params.generateImages}
+                        onCheckedChange={handleImageGenerationChange}
+                        aria-label="Toggle automatic image generation"
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

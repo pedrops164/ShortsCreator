@@ -32,7 +32,7 @@ public class OpenAiTtsProvider implements TextToSpeechProvider {
 
     public OpenAiTtsProvider(WebClient.Builder webClientBuilder, AppProperties appProperties, TranscriptionProvider transcriptionProvider, ResourceHelperService resourceHelperService) {
         this.webClient = webClientBuilder.baseUrl("https://api.openai.com/v1/audio").build();
-        this.apiKey = appProperties.getTts().getOpenai().getApiKey();
+        this.apiKey = appProperties.getOpenai().getApiKey();
         this.transcriptionProvider = transcriptionProvider;
         this.resourceHelperService = resourceHelperService;
         if (apiKey == null || apiKey.isBlank()) {

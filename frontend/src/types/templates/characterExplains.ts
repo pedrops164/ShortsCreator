@@ -1,4 +1,5 @@
 export type CharacterExplainsParams = {
+  generateImages?: boolean;
   characterPresetId?: string; // This can stay optional as it has no default value
   topicTitle: string;         // Now required
   dialogue: Array<{          // Now required

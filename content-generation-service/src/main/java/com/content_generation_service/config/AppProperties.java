@@ -26,6 +26,29 @@ public class AppProperties {
 
     @Valid
     @NotNull
+    private Openai openai = new Openai();
+    
+    @Data
+    public static class Openai {
+        @NotEmpty
+        private String apiKey;
+        @Valid
+        @NotNull
+        private LLM llm;
+    }
+
+    @Data
+    public static class LLM {
+        @NotEmpty
+        private String url; // Base URL for the OpenAI API
+        @NotEmpty
+        private String model; // e.g., "gpt-3.5-turbo"
+        private Double temperature;
+        private Integer maxTokens;
+    }
+
+    @Valid
+    @NotNull
     private Transcription transcription = new Transcription();
     
     @Data
@@ -36,14 +59,8 @@ public class AppProperties {
     
     @Data
     public static class Tts {
-        private Openai openai = new Openai();
         private Elevenlabs elevenlabs = new Elevenlabs();
         private Speechify speechify = new Speechify();
-    }
-    
-    @Data
-    public static class Openai {
-        private String apiKey;
     }
     @Data
     public static class Elevenlabs {
@@ -107,6 +124,16 @@ public class AppProperties {
         private String images; // e.g., "assets/images/"
         @NotEmpty
         private String fonts; // e.g., "assets/fonts/"
+    }
+
+    private Google google = new Google();
+
+    @Data
+    public static class Google {
+        @NotEmpty
+        private String apiKey;
+        @NotEmpty
+        private String cseId;
     }
 
 }

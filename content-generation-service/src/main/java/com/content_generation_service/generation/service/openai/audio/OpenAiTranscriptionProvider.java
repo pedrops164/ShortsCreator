@@ -47,7 +47,7 @@ public class OpenAiTranscriptionProvider implements TranscriptionProvider {
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
                 
-        this.apiKey = appProperties.getTts().getOpenai().getApiKey(); // Re-using the same API key
+        this.apiKey = appProperties.getOpenai().getApiKey(); // Re-using the same API key
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("OpenAI API key is not configured for transcription.");
         }

@@ -4,6 +4,11 @@
   "description": "Schema to validate the parameters for generating a 'Character Explains Stuff' video.",
   "type": "object",
   "properties": {
+    "generateImages": {
+        "type": "boolean",
+        "description": "Whether to generate images for each dialogue line using Google Image Search.",
+        "default": false
+    },
     "characterPresetId": {
         "type": "string",
         "description": "ID for the character pack (images, default voices).",

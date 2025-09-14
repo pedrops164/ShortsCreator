@@ -38,7 +38,7 @@ app:
     llm:
       url: https://api.openai.com/v1/chat/completions
       model: gpt-4
-      temperature: 0.7
+      temperature: 0.5
       max-tokens: 1024
   pricing:
     ai-text-generation-cost-usd: 1 # 1 cent
