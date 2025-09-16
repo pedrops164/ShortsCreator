@@ -8,13 +8,17 @@ import com.content_generation_service.generation.service.speechify.dto.Speechify
 import com.content_generation_service.generation.service.speechify.dto.SpeechifyAudioResponse.SpeechMarks;
 
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -28,13 +32,25 @@ public class SpeechifyVoiceCloningProvider implements TextToSpeechProvider {
     private final String apiKey;
     private final Map<String, String> voiceMapping;
 
+    // --- Injected Config Values ---
+    private final long timeoutSeconds;
+    private final int maxRetryAttempts;
+    private final long minBackoffSeconds;
+
     public SpeechifyVoiceCloningProvider(
             WebClient.Builder webClientBuilder,
-            AppProperties appProperties) {
+            AppProperties appProperties,
+            @Value("${app.tts.speechify.timeout-seconds}") long timeoutSeconds,
+            @Value("${app.tts.speechify.retry.max-attempts}") int maxRetryAttempts,
+            @Value("${app.tts.speechify.retry.min-backoff-seconds}") long minBackoffSeconds) {
 
         this.webClient = webClientBuilder.baseUrl("https://api.sws.speechify.com/v1").build();
         this.apiKey = appProperties.getTts().getSpeechify().getApiKey();
         this.voiceMapping = appProperties.getTts().getSpeechify().getVoiceMapping();
+        
+        this.timeoutSeconds = timeoutSeconds;
+        this.maxRetryAttempts = maxRetryAttempts;
+        this.minBackoffSeconds = minBackoffSeconds;
 
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("Speechify API key is not configured.");
@@ -85,11 +101,20 @@ public class SpeechifyVoiceCloningProvider implements TextToSpeechProvider {
                 clientResponse.bodyToMono(String.class)
                     .flatMap(errorBody -> {
                         log.error("Speechify API Error - Status: {}, Body: {}", clientResponse.statusCode(), errorBody);
-                        return Mono.error(new IOException("Speechify API call failed with status " + clientResponse.statusCode()));
+                        // error is not retried for client errors (4xx)
+                        if (clientResponse.statusCode().is4xxClientError()) {
+                           return Mono.error(new IOException("Speechify API client error: " + clientResponse.statusCode()));
+                        }
+                        return Mono.error(new IOException("Speechify API server error: " + clientResponse.statusCode()));
                     })
             )
             // Receive the response as the SpeechifyAudioResponse DTO.
             .bodyToMono(SpeechifyAudioResponse.class)
+            .timeout(Duration.ofSeconds(this.timeoutSeconds))
+            .retryWhen(Retry.backoff(this.maxRetryAttempts, Duration.ofSeconds(this.minBackoffSeconds))
+                .filter(this::isTransientError) // Only retry on specific network errors
+                .onRetryExhaustedThrow((spec, signal) -> signal.failure())
+            )
             .flatMap(response -> {
                 try {
                     // Decode the Base64 string into raw audio bytes.
@@ -120,5 +145,11 @@ public class SpeechifyVoiceCloningProvider implements TextToSpeechProvider {
                     return Mono.error(e);
                 }
             });
+    }
+
+    private boolean isTransientError(Throwable throwable) {
+        // Only retry on IOExceptions (like Connection Reset) or WebClientRequestExceptions.
+        // Do not retry on client errors (like a 400 Bad Request).
+        return throwable instanceof IOException && !throwable.getMessage().contains("client error");
     }
 }

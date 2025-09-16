@@ -4,6 +4,7 @@ import com.content_generation_service.config.AppProperties;
 import com.content_generation_service.generation.model.NarrationSegment;
 import com.content_generation_service.generation.model.WordTiming;
 import com.content_generation_service.generation.service.audio.TranscriptionProvider;
+import com.content_generation_service.generation.service.visual.MediaMetadataService;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -23,8 +24,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.content_generation_service.generation.service.audio.AudioService;
-
 /**
  * Concrete implementation of a TranscriptionProvider using OpenAI's Whisper API.
  * This bean is only created if the property 'app.transcription.provider' is set to 'openai'.
@@ -36,11 +35,11 @@ public class OpenAiTranscriptionProvider implements TranscriptionProvider {
 
     private final WebClient webClient;
     private final String apiKey;
-    private final AudioService audioService;
+    private final MediaMetadataService mediaMetadataService;
 
-    public OpenAiTranscriptionProvider(WebClient.Builder webClientBuilder, AppProperties appProperties, AudioService audioService) {
+    public OpenAiTranscriptionProvider(WebClient.Builder webClientBuilder, AppProperties appProperties, MediaMetadataService mediaMetadataService) {
         // The transcription API can take a while, so we increase the timeout.
-        this.audioService = audioService;
+        this.mediaMetadataService = mediaMetadataService;
         HttpClient httpClient = HttpClient.create().responseTimeout(Duration.ofMinutes(2));
         this.webClient = webClientBuilder
                 .baseUrl("https://api.openai.com/v1/audio")
@@ -83,7 +82,7 @@ public class OpenAiTranscriptionProvider implements TranscriptionProvider {
      * Processes a fully downloaded audio file to extract duration and word timings.
      */
     public Mono<NarrationSegment> getNarrationSegmentFromAudioFile(Path audioFile, boolean generateTimings) {
-        double realDuration = audioService.getAudioDuration(audioFile);
+        double realDuration = mediaMetadataService.getAudioDuration(audioFile);
 
         Mono<List<WordTiming>> timingsMono;
         if (generateTimings) {

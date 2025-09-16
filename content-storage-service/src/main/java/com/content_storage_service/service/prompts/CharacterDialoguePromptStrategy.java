@@ -24,7 +24,7 @@ public class CharacterDialoguePromptStrategy implements PromptStrategy {
 
         return String.format(
             """
-            Your task is to write a short, engaging dialogue between two characters: **%s** and **%s**. The topic of their conversation is: **%s**. Generate between 8 to 12 lines of dialogue in total.
+            Your task is to write an engaging and detailed dialogue between two characters: **%s** and **%s**. The topic of their conversation is: **%s**. Generate between 8 to 12 lines of dialogue in total.
 
             **IMPORTANT**: Your response **MUST** be a valid JSON array of objects.
             - Each object in the array represents a single line of dialogue.

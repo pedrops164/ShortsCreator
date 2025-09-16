@@ -29,7 +29,7 @@
                     <rootCauseFirst>true</rootCauseFirst>
                     <lineSeparator>\n</lineSeparator>
                     <maxDepthPerThrowable>30</maxDepthPerThrowable>
-                    <maxLength>2048</maxLength>
+                    <maxLength>16384</maxLength>
                     <shortenedClassNameLength>20</shortenedClassNameLength>
                     <exclude>sun\.reflect\..*\.invoke.*</exclude>
                     <exclude>net\.sf\.cglib\.proxy\.MethodProxy\.invoke</exclude>

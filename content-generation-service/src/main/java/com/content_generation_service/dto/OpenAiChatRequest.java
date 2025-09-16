@@ -5,8 +5,8 @@ import java.util.List;
 
 public record OpenAiChatRequest(
     String model,
-    List<OpenAiChatMessage> messages,
-    Double temperature,
-    @JsonProperty("max_tokens")
-    Integer maxTokens
+    List<OpenAiChatMessage> messages
+    //Double temperature,
+    //@JsonProperty("max_completion_tokens")
+    //Integer maxTokens
 ) {}

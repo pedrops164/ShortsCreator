@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -81,11 +82,15 @@ public class CharacterExplainsOrchestrator {
                 // Enrich Dialogue with Search Queries using LLM
                 dialogue = dialogueEnrichmentService.enrichDialogueWithSearchQueries(params.get("dialogue")).block();
                 if (dialogue == null) throw new RuntimeException("Failed to get enriched dialogue from LLM.");
+                log.debug("Enriched Dialogue: {}", dialogue);
             }
 
             // Generate Audio & Download Images Concurrently
             List<DialogueLineResult> dialogueResults = generateMediaAssets(dialogue, generateImages).block();
             if (dialogueResults == null) throw new RuntimeException("Failed to generate media assets.");
+            dialogueResults.forEach(res -> {
+                log.debug("Dialogue Line - Narration: {}, Images: {}", res.narrationSegment(), res.imagePaths());
+            });
 
             // Collect temp files from results
             dialogueResults.forEach(res -> {
@@ -143,6 +148,7 @@ public class CharacterExplainsOrchestrator {
                 Mono<List<Path>> imagesMono = Flux.fromIterable(queries)
                     .flatMapSequential(query -> googleImageSearchService.downloadImageForQuery(query)
                         // this makes the process fault tolerant to individual image download failures
+                        .timeout(Duration.ofSeconds(10))
                         .onErrorResume(e -> {
                             log.warn("Could not download image for query '{}'. Skipping it. Reason: {}", query, e.getMessage());
                             return Mono.empty(); // On error, return an empty Mono to skip this element

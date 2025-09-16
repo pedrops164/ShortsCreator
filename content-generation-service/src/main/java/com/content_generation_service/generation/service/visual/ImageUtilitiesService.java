@@ -233,4 +233,31 @@ public class ImageUtilitiesService {
         ImageIO.write(image, format, outputPath.toFile());
         log.info("Successfully saved image to {}", outputPath.toAbsolutePath());
     }
+    
+    /**
+     * Checks if a file is a valid and decodable image.
+     *
+     * @param imagePath The path to the file to validate.
+     * @return {@code true} if the file is a valid image that ImageIO can read, {@code false} otherwise.
+     */
+    public static boolean isValid(Path imagePath) {
+        if (imagePath == null) {
+            return false;
+        }
+        
+        try {
+            // ImageIO.read() attempts to decode the file.
+            // It returns a BufferedImage on success and null on failure (e.g., corrupt file, not an image).
+            BufferedImage image = ImageIO.read(imagePath.toFile());
+            
+            // The image object must be non-null, and it must have a width and height greater than 0.
+            return image != null && image.getWidth() > 0 && image.getHeight() > 0;
+            
+        } catch (IOException e) {
+            // An IOException can occur for various reasons, like file access errors.
+            // In this context, we can treat it as an invalid image.
+            System.err.println("IOException while validating image " + imagePath + ": " + e.getMessage());
+            return false;
+        }
+    }
 }

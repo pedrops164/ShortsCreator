@@ -107,6 +107,10 @@ public class VideoCompositionBuilder {
      * @param duration      The duration in seconds the overlay should be visible.
      */
     public VideoCompositionBuilder withImageOverlay(Path imagePath, ImagePosition position, double startTime, double duration) {
+        if (!ImageUtilitiesService.isValid(imagePath)) {
+            log.error("Invalid image path: {}", imagePath);
+            return this;
+        }
         int imageInputIndex = this.inputs.size();
         this.inputs.add(imagePath);
 
@@ -170,7 +174,8 @@ public class VideoCompositionBuilder {
         }
         
         String currentVideoTag = this.lastVideoStreamTag;
-        String overlayTag = "[ovr" + System.currentTimeMillis() + "]";
+        UUID unique_id = UUID.randomUUID();
+        String overlayTag = "[ovr" + unique_id + "]";
         double endTime = startTime + duration;
 
         String overlayFilter = String.format(Locale.US, "%s%soverlay=%s:%s:enable='between(t,%.2f,%.2f)'%s",
@@ -214,40 +219,6 @@ public class VideoCompositionBuilder {
         String overlayFilter = String.format(Locale.US, "%s%soverlay=%d:%d:enable='between(t,%.2f,%.2f)'%s",
                 currentVideoTag, streamToOverlayTag, x, y, startTime, endTime, overlayTag);
         
-        this.filterComplexParts.add(overlayFilter);
-        this.lastVideoStreamTag = overlayTag;
-        return this;
-    }
-
-    /**
-     * A convenience method for the common use case of adding a centered overlay.
-     * It calls the more generic withImageOverlay method internally.
-     */
-    public VideoCompositionBuilder withCenteredOverlay(Path imagePath, double startTime, double duration, boolean scaleToFit) {
-        // FFmpeg's overlay filter can center automatically using these expressions for x and y
-        String xExpression = "(W-w)/2";
-        String yExpression = "(H-h)/2";
-        
-        // This logic is now almost identical to the generic one, just with different x/y values.
-        int imageInputIndex = this.inputs.size();
-        this.inputs.add(imagePath);
-        String imageStreamTag = "[" + imageInputIndex + ":v]";
-        String streamToOverlayTag = imageStreamTag;
-
-        if (scaleToFit) {
-            String scaledImageTag = "[scaled_img" + imageInputIndex + "]";
-            String scaleFilter = String.format(Locale.US, "%sscale=%d:-2%s", imageStreamTag, this.width, scaledImageTag);
-            this.filterComplexParts.add(scaleFilter);
-            streamToOverlayTag = scaledImageTag;
-        }
-
-        String currentVideoTag = this.lastVideoStreamTag;
-        String overlayTag = "[ovr_centered" + imageInputIndex + "]";
-        double endTime = startTime + duration;
-
-        String overlayFilter = String.format(Locale.US, "%s%soverlay=%s:%s:enable='between(t,%.2f,%.2f)'%s",
-                currentVideoTag, streamToOverlayTag, xExpression, yExpression, startTime, endTime, overlayTag);
-
         this.filterComplexParts.add(overlayFilter);
         this.lastVideoStreamTag = overlayTag;
         return this;

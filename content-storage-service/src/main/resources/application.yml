@@ -37,9 +37,13 @@ app:
     api-key: ${OPENAI_API_KEY}
     llm:
       url: https://api.openai.com/v1/chat/completions
-      model: gpt-4
+      model: gpt-5-mini
       temperature: 0.5
       max-tokens: 1024
+      timeout-seconds: 60
+      retry:
+        max-attempts: 3
+        min-backoff-seconds: 2
   pricing:
     ai-text-generation-cost-usd: 1 # 1 cent
     video-generation:

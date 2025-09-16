@@ -12,6 +12,7 @@ import com.content_generation_service.generation.service.visual.VideoAssetServic
 import com.content_generation_service.generation.service.visual.VideoCompositionBuilder;
 import com.content_generation_service.messaging.VideoStatusUpdateDispatcher;
 import com.content_generation_service.config.AppProperties;
+import com.content_generation_service.generation.model.ImagePosition;
 import com.content_generation_service.generation.model.NarrationSegment;
 import com.content_generation_service.generation.model.RedditNarration;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -105,7 +106,7 @@ public class RedditStoryOrchestrator {
                 .withDimensions(videoWidth, videoHeight)
                 .withBackground(backgroundVideo) // Assuming 9:16 aspect ratio
                 .withNarration(narration.getAudioFilePath())
-                .withCenteredOverlay(titleImage, 0, narration.getTitleDurationSeconds(), false)
+                .withImageOverlay(titleImage, ImagePosition.CENTER, 0, narration.getTitleDurationSeconds())
                 .withSubtitles(fontDirPath, subtitleFile)
                 .withProgressListener(scopedProgressListener) // Pass the scoped listener
                 .buildAndExecute(sharedOutputPath);

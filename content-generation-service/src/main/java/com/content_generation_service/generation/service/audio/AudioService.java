@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import com.content_generation_service.generation.model.NarrationSegment;
 import com.content_generation_service.generation.model.WordTiming;
+import com.content_generation_service.generation.service.visual.MediaMetadataService;
 import com.content_generation_service.util.ResourceHelperService;
 
 @Slf4j
@@ -28,23 +29,6 @@ public class AudioService {
 
     private final ResourceHelperService resourceHelperService;
 
-    /**
-     * Calculates the duration of an audio file using the JAudiotagger library.
-     * @param audioFile Path to the audio file.
-     * @return The duration in seconds.
-     */
-    public double getAudioDuration(Path audioFile) {
-        try {
-            AudioFile f = AudioFileIO.read(audioFile.toFile());
-            double duration = f.getAudioHeader().getPreciseTrackLength();
-            log.debug("Calculated audio duration: {} seconds for file {}", duration, audioFile);
-            return duration;
-        } catch (Exception e) {
-            log.warn("Could not calculate audio duration for file: {}. Falling back to 0. Reason: {}", audioFile, e.getMessage());
-            return 0.0;
-        }
-    }
-    
     /**
      * Adjusts the start and end times of a list of WordTiming objects by a given offset.
      * @param timings The list of WordTiming objects to adjust.
@@ -88,7 +72,7 @@ public class AudioService {
             return Mono.error(e);
         }
 
-        // 1. Build FFmpeg command
+        // Build FFmpeg command
         List<String> command = new ArrayList<>();
         command.add("ffmpeg");
         audioFiles.forEach(path -> {
@@ -107,11 +91,11 @@ public class AudioService {
 
         log.info("Executing FFmpeg command: {}", String.join(" ", command));
 
-        // 2. Execute the command
+        // Execute the command
         try {
             Process process = new ProcessBuilder(command).start();
             try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                errorReader.lines().forEach(log::error);
+                errorReader.lines().forEach(log::debug);
             }
             int exitCode = process.waitFor();
             if (exitCode != 0) {
@@ -124,7 +108,7 @@ public class AudioService {
             return Mono.error(e);
         }
 
-        // 3. Adjust all timestamps
+        // Adjust all timestamps
         List<WordTiming> combinedTimings = new ArrayList<>();
         double currentOffset = 0.0;
 
@@ -135,7 +119,7 @@ public class AudioService {
         
         log.debug("Adjusted {} word timings for the combined track.", combinedTimings.size());
 
-        // 4. Clean up intermediate files
+        // Clean up intermediate files
         audioFiles.forEach(resourceHelperService::deleteTemporaryFile);
 
         // Return a new NarrationSegment representing the combined result
