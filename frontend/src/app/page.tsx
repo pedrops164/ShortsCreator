@@ -4,25 +4,33 @@ import React, { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { Loader2, Clapperboard, MessageSquare, Wand2, UploadCloud, Download } from 'lucide-react';
+import { Loader2, Clapperboard, MessageSquare, Wand2, UploadCloud, Download, ArrowRight } from 'lucide-react'; // Added ArrowRight for the redirect button
 
-// --- Reusable Components ---
+// --- Reusable Button Component ---
 
-const GoogleSignInButton = () => {
+type SignInButtonProps = {
+  isGoogleSignIn: boolean;
+  text: string;
+};
+
+const SignInButton = ({ isGoogleSignIn, text }: SignInButtonProps) => {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/create';
   
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSignIn = async () => {
-    setIsLoading(true);
-    // This function doesn't return, it redirects. The loading state is for UI feedback.
-    signIn('keycloak', { callbackUrl }, { kc_idp_hint: 'google' });
+  const handleAction = async () => {
+    if (isGoogleSignIn) {
+      setIsLoading(true);
+      signIn('keycloak', { callbackUrl }, { kc_idp_hint: 'google' });
+    } else {
+      window.location.href = callbackUrl;
+    }
   };
 
   return (
     <button
-      onClick={handleSignIn}
+      onClick={handleAction}
       disabled={isLoading}
       className="relative w-full max-w-xs px-8 py-4 text-lg font-bold text-white transition-all duration-300 ease-in-out rounded-lg shadow-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:scale-105 hover:shadow-purple-500/50 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-70 disabled:cursor-not-allowed"
     >
@@ -32,8 +40,12 @@ const GoogleSignInButton = () => {
         </div>
       ) : (
         <div className="flex items-center justify-center gap-3">
-          <Image src="/google-logo.png" alt="Google logo" width={24} height={24} />
-          <span>Sign in with Google</span>
+          {isGoogleSignIn ? (
+            <Image src="/google-logo.png" alt="Google logo" width={24} height={24} />
+          ) : (
+            <ArrowRight className="w-6 h-6" /> // A new, simple icon for the redirect button
+          )}
+          <span>{text}</span>
         </div>
       )}
     </button>
@@ -43,14 +55,11 @@ const GoogleSignInButton = () => {
 // --- Page Sections ---
 
 const AnimatedVideoGrid = () => {
-  // Use more varied and higher-quality thumbnails
   const imageSources = [
-    // Column 1
     'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/whats_a_cheat_code.png',
     'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/how_is_ai_trained.png',
     'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/psychopath.png',
     'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/bystander_effect.png',
-    // Column 2
     'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/number_one_mistake.png',
     'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/black_hole.png',
     'https://shortscreator-example-videos.s3.eu-north-1.amazonaws.com/whats_a_cheat_code.png',
@@ -84,12 +93,8 @@ const AnimatedVideoGrid = () => {
 
 
 const HeroSection = () => (
-  // Add background styles and overflow-hidden here
   <section className="relative flex flex-col items-center justify-center min-h-[80vh] px-4 text-center overflow-hidden bg-gray-900 bg-grid-white/[0.05]">
-    {/* Move the animated grid inside */}
     <AnimatedVideoGrid />
-    
-    {/* Add relative and a higher z-index to the content wrapper to ensure it's on top of the grid */}
     <div className="relative z-20 max-w-3xl">
       <h1 className="text-4xl font-extrabold tracking-tight text-transparent sm:text-5xl md:text-7xl bg-clip-text bg-gradient-to-br from-white to-gray-400">
         Transform Reddit Threads & Ideas into Viral Shorts. Instantly.
@@ -103,7 +108,7 @@ const HeroSection = () => (
             Loading...
           </button>
         }>
-          <GoogleSignInButton />
+          <SignInButton isGoogleSignIn={false} text="Start Creating" />
         </Suspense>
       </div>
     </div>
@@ -111,7 +116,7 @@ const HeroSection = () => (
 );
 
 type FeatureCardProps = {
-  icon: React.ElementType; // The type for a component like an icon
+  icon: React.ElementType;
   title: string;
   description: string;
   imageSrc: string;
@@ -121,7 +126,6 @@ type FeatureCardProps = {
 const FeatureCard = ({ icon: Icon, title, description, imageSrc, alt }: FeatureCardProps) => (
     <div className="overflow-hidden transition-all duration-300 border rounded-2xl bg-gray-900/50 border-white/10 backdrop-blur-lg hover:border-purple-500/50 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-1">
       <div className="grid grid-cols-1 md:grid-cols-5 md:gap-6 items-center">
-        {/* Text Content (takes 3/5 width on desktop) */}
         <div className="p-6 md:p-8 md:col-span-3">
           <div className="flex items-center gap-4 mb-4">
             <div className="p-2 rounded-lg bg-white/10">
@@ -131,10 +135,7 @@ const FeatureCard = ({ icon: Icon, title, description, imageSrc, alt }: FeatureC
           </div>
           <p className="text-gray-400">{description}</p>
         </div>
-
-        {/* Image Content (takes 2/5 width on desktop) */}
         <div className="px-6 pb-6 md:p-6 md:col-span-2">
-            {/* Added max-w for better scaling on mobile and within the grid */}
             <div className="relative w-full max-w-[220px] mx-auto md:max-w-full aspect-[9/16] overflow-hidden rounded-xl shadow-inner shadow-black/50 ring-1 ring-white/10">
                 <Image 
                     src={imageSrc} 
@@ -147,7 +148,6 @@ const FeatureCard = ({ icon: Icon, title, description, imageSrc, alt }: FeatureC
       </div>
     </div>
 );
-
 
 const FeaturesSection = () => (
     <section className="relative z-10 w-full max-w-6xl px-4 py-20 mx-auto sm:py-28">
@@ -215,8 +215,6 @@ export default function LoginPage() {
       <HeroSection />
       <FeaturesSection />
       <HowItWorksSection />
-
-      {/* Footer CTA */}
       <section className="py-20 text-center sm:py-28">
           <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">Ready to Go Viral?</h2>
           <p className="max-w-xl mx-auto mt-4 text-lg text-gray-300">Start creating engaging short-form content today. It&apos;s free to get started.</p>
@@ -226,7 +224,7 @@ export default function LoginPage() {
                   Loading...
                 </button>
               }>
-                <GoogleSignInButton />
+                <SignInButton isGoogleSignIn={true} text="Sign in with Google" />
               </Suspense>
           </div>
       </section>
