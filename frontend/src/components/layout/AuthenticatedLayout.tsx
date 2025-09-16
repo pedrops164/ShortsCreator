@@ -16,7 +16,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
     required: true,
     onUnauthenticated() {
       // Redirect to your login page
-      router.push('/login');
+      router.push('/');
     },
   });
 

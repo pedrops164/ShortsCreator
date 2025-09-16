@@ -104,7 +104,7 @@ export const authOptions: AuthOptions = {
     },
   },
   pages: {
-    signIn: '/login',
+    signIn: '/',
     // Can also add custom pages for signOut, error, etc.
   },
   secret: process.env.NEXTAUTH_SECRET,

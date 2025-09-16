@@ -189,13 +189,13 @@ export function Sidebar() {
             <Tooltip>
               <TooltipTrigger asChild>
                 {status === 'authenticated' ? (
-                  <Button variant="ghost" className="w-full justify-start h-10 px-2" onClick={() => signOut({ callbackUrl: '/login' })}>
+                  <Button variant="ghost" className="w-full justify-start h-10 px-2" onClick={() => signOut({ callbackUrl: '/' })}>
                     <LogOut className={cn("h-4 w-4", isCollapsed ? "mx-auto" : "mr-3")} />
                     <span className={cn(isCollapsed && "sr-only")}>Logout</span>
                   </Button>
                 ) : (
                   <Button variant="ghost" className="w-full justify-start h-10 px-2" asChild>
-                    <Link href="/login">
+                    <Link href="/">
                       <LogIn className={cn("h-4 w-4", isCollapsed ? "mx-auto" : "mr-3")} />
                       <span className={cn(isCollapsed && "sr-only")}>Login</span>
                     </Link>
